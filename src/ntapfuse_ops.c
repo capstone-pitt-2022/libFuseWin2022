@@ -188,38 +188,43 @@ ntapfuse_open (const char *path, struct fuse_file_info *fi)
   return 0;
 }
 
-int
-ntapfuse_read (const char *path, char *buf, size_t size, off_t off,
-	   struct fuse_file_info *fi)
-{
-  return pread (fi->fh, buf, size, off) < 0 ? -errno : size;
-}
-
-void log(char *operation,char *path){
+void log(char *operation,char *path, size_t size){
 
   char *filename = "log.txt";
   char workdir[PATH_MAX];
   char logpath[PATH_MAX];
   char logbuf[200];
   
-  getcwd(workdir,PATH_MAX);
-  fullpath (workdir, logpath);
-  filename = strcat(logpath,filename);
+  getcwd(workdir,PATH_MAX); // get working directory
+  fullpath (workdir, logpath); // convert to full path
+  filename = strcat(logpath,filename); //add filename to the path
   
-  FILE *fp = fopen(filename,"a+");
+  FILE *fp = fopen(filename,"a+");  // open or create file
   time_t now;
   time(&now);
   char timebuf[80];
-  strftime(timebuf,80,"%c",localtime(&now));
-  sprintf(logbuf,"Time: %s Operation:%s, Path: %s\n",timebuf,operation,path);
-  fseek(fp,0,SEEK_END);
-  fwrite(logbuf,1,sizeof(logbuf),fp);
+  strftime(timebuf,80,"%c",localtime(&now)); // convert time to readable
+  sprintf(logbuf,"Time: %s Operation:%s, Size:%ld,Path: %s\n",timebuf,operation,size,path);
+  if(fp!=NULL){
+  	fseek(fp,0,SEEK_END);
+  	fwrite(logbuf,1,sizeof(logbuf),fp);
 
-  fclose(fp);
+  	fclose(fp);
+  }
   
 	
 
 }
+
+int
+ntapfuse_read (const char *path, char *buf, size_t size, off_t off,
+	   struct fuse_file_info *fi)
+{
+	
+  return pread (fi->fh, buf, size, off) < 0 ? -errno : size;
+}
+
+
 
 int
 ntapfuse_write (const char *path, const char *buf, size_t size, off_t off,
@@ -227,11 +232,13 @@ ntapfuse_write (const char *path, const char *buf, size_t size, off_t off,
 {
   char fpath[PATH_MAX];
   fullpath (path, fpath);
-
-  log("write",fpath);
+  
+  
+  log("write",fpath,size);
   
 
   return pwrite (fi->fh, buf, size, off) < 0 ? -errno : size;
+
 }
 
 int
@@ -239,6 +246,8 @@ ntapfuse_statfs (const char *path, struct statvfs *buf)
 {
   char fpath[PATH_MAX];
   fullpath (path, fpath);
+  
+  
 
   return statvfs (fpath, buf) ? -errno : 0;
 }
