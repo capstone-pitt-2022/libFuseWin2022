@@ -2,6 +2,7 @@
  * Project: ntapfuse
  * Author: Samuel Kenney <samuel.kenney48@gmail.com>
  *         August Sodora III <augsod@gmail.com>
+ *         Danny Yu <chy75@pitt.edu>
  * File: ntapfuse_ops.c
  * License: GPLv3
  *
