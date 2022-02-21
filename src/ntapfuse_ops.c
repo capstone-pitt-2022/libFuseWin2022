@@ -22,6 +22,7 @@
 
 #include "ntapfuse_ops.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <errno.h>
 #include <dirent.h>
@@ -31,6 +32,7 @@
 
 #include <sys/xattr.h>
 #include <sys/types.h>
+#include <sqlite3.h>
 
 /**
  * Appends the path of the root filesystem to the given path, returning
@@ -188,39 +190,60 @@ ntapfuse_open (const char *path, struct fuse_file_info *fi)
   return 0;
 }
 
-void log(char *operation,char *path, size_t size){
+char* addquote(char* str){
+  char* newstr = calloc(1,strlen(str)+2);
+  *newstr='\'';
+  strcat(newstr,str);
+  char* t = "\'";
+  strcat(newstr,t);
+  return newstr;
+}
 
-  char *filename = "log.txt";
+void log_write(char *operation,char *path, size_t size){
+
+  char *filename = "log.db";
+  sqlite3 *DB;
+	
+  char *err=0;
+
   char workdir[PATH_MAX];
   char logpath[PATH_MAX];
-  char logbuf[200];
   
   getcwd(workdir,PATH_MAX); // get working directory
   fullpath (workdir, logpath); // convert to full path
   filename = strcat(logpath,filename); //add filename to the path
   
-  FILE *fp = fopen(filename,"a+");  // open or create file
+  sqlite3_open(filename,&DB);
+  
+  char *sql ="CREATE TABLE if not exists Ops(Time TEXT, Operation TEXT, Size INT, Path TEXT);" 
+            "INSERT INTO Ops VALUES(%s, %s, %d,%s);" ;  // write record to a talbe called Ops 
+  
+  char *bufsql = (char*)malloc(600);
   time_t now;
   time(&now);
   char timebuf[80];
   strftime(timebuf,80,"%c",localtime(&now)); // convert time to readable
-  sprintf(logbuf,"Time: %s Operation:%s, Size:%ld,Path: %s\n",timebuf,operation,size,path);
-  if(fp!=NULL){
-  	fseek(fp,0,SEEK_END);
-  	fwrite(logbuf,1,sizeof(logbuf),fp);
+  sprintf(bufsql,sql,addquote(timebuf),addquote(operation),size,addquote(path));
 
-  	fclose(fp);
-  }
-  
+  sqlite3_exec(DB,bufsql,0,0,&err);
 	
-
+  sqlite3_close(DB);
+  
 }
+
 
 int
 ntapfuse_read (const char *path, char *buf, size_t size, off_t off,
 	   struct fuse_file_info *fi)
 {
-	
+	char fpath[PATH_MAX];
+  fullpath (path, fpath);
+  
+  //log("Read",fpath,size);
+  
+  
+
+
   return pread (fi->fh, buf, size, off) < 0 ? -errno : size;
 }
 
@@ -234,7 +257,7 @@ ntapfuse_write (const char *path, const char *buf, size_t size, off_t off,
   fullpath (path, fpath);
   
   
-  log("write",fpath,size);
+  log_write("write",fpath,size);
   
 
   return pwrite (fi->fh, buf, size, off) < 0 ? -errno : size;
