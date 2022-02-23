@@ -2,6 +2,10 @@
  * Project: ntapfuse
  * Author: Samuel Kenney <samuel.kenney48@gmail.com>
  *         August Sodora III <augsod@gmail.com>
+<<<<<<< HEAD
+=======
+ *         Qizhe Wang <qiw68@pitt.edu>
+>>>>>>> 4e94ad45b0580136f55780e5955b31b609204792
  * File: ntapfuse_ops.c
  * License: GPLv3
  *
@@ -21,8 +25,13 @@
 #define _XOPEN_SOURCE 500
 
 #include "ntapfuse_ops.h"
+<<<<<<< HEAD
 #include "logger.h"
 #include <stdio.h>
+=======
+#include <stdio.h>
+#include <stdlib.h>
+>>>>>>> 4e94ad45b0580136f55780e5955b31b609204792
 
 #include <errno.h>
 #include <dirent.h>
@@ -32,6 +41,10 @@
 
 #include <sys/xattr.h>
 #include <sys/types.h>
+<<<<<<< HEAD
+=======
+#include <sqlite3.h>
+>>>>>>> 4e94ad45b0580136f55780e5955b31b609204792
 
 /**
  * Appends the path of the root filesystem to the given path, returning
@@ -66,6 +79,7 @@ ntapfuse_readlink (const char *path, char *target, size_t size)
   char fpath[PATH_MAX];
   fullpath (path, fpath);
 
+<<<<<<< HEAD
   int result = readline (fpath, target, size) < 0 ? -errno : 0;
 
   char* tag  = strcat("Write to: ", fpath);
@@ -78,6 +92,9 @@ ntapfuse_readlink (const char *path, char *target, size_t size)
 
   logger(tag, msg);
   return result;
+=======
+  return readlink (fpath, target, size) < 0 ? -errno : 0;
+>>>>>>> 4e94ad45b0580136f55780e5955b31b609204792
 }
 
 int
@@ -200,21 +217,92 @@ ntapfuse_open (const char *path, struct fuse_file_info *fi)
   return 0;
 }
 
+<<<<<<< HEAD
+=======
+char* addquote(char* str){
+  char* newstr = calloc(1,strlen(str)+2);
+  *newstr='\'';
+  strcat(newstr,str);
+  char* t = "\'";
+  strcat(newstr,t);
+  return newstr;
+}
+
+void log_write(char *operation,char *path, size_t size){
+
+  char *filename = "log.db";
+  sqlite3 *DB;
+	
+  char *err=0;
+
+  char workdir[PATH_MAX];
+  char logpath[PATH_MAX];
+  
+  getcwd(workdir,PATH_MAX); // get working directory
+  fullpath (workdir, logpath); // convert to full path
+  filename = strcat(logpath,filename); //add filename to the path
+  
+  sqlite3_open(filename,&DB);
+  
+  char *sql ="CREATE TABLE if not exists Ops(Time TEXT, Operation TEXT, Size INT, Path TEXT);" 
+            "INSERT INTO Ops VALUES(%s, %s, %d,%s);" ;  // write record to a talbe called Ops 
+  
+  char *bufsql = (char*)malloc(600);
+  time_t now;
+  time(&now);
+  char timebuf[80];
+  strftime(timebuf,80,"%c",localtime(&now)); // convert time to readable
+  sprintf(bufsql,sql,addquote(timebuf),addquote(operation),size,addquote(path));
+
+  sqlite3_exec(DB,bufsql,0,0,&err);
+	
+  sqlite3_close(DB);
+  
+}
+
+
+>>>>>>> 4e94ad45b0580136f55780e5955b31b609204792
 int
 ntapfuse_read (const char *path, char *buf, size_t size, off_t off,
 	   struct fuse_file_info *fi)
 {
+<<<<<<< HEAD
   return pread (fi->fh, buf, size, off) < 0 ? -errno : size;
 }
 
+=======
+	char fpath[PATH_MAX];
+  fullpath (path, fpath);
+  
+  //log("Read",fpath,size);
+  
+  
+
+
+  return pread (fi->fh, buf, size, off) < 0 ? -errno : size;
+}
+
+
+
+>>>>>>> 4e94ad45b0580136f55780e5955b31b609204792
 int
 ntapfuse_write (const char *path, const char *buf, size_t size, off_t off,
 	    struct fuse_file_info *fi)
 {
   char fpath[PATH_MAX];
   fullpath (path, fpath);
+<<<<<<< HEAD
 
   return pwrite (fi->fh, buf, size, off) < 0 ? -errno : size;
+=======
+  
+  
+  log_write("write",fpath,size);
+  
+
+  return pwrite (fi->fh, buf, size, off) < 0 ? -errno : size;
+
+>>>>>>> 4e94ad45b0580136f55780e5955b31b609204792
 }
 
 int
@@ -222,6 +310,11 @@ ntapfuse_statfs (const char *path, struct statvfs *buf)
 {
   char fpath[PATH_MAX];
   fullpath (path, fpath);
+<<<<<<< HEAD
+=======
+  
+  
+>>>>>>> 4e94ad45b0580136f55780e5955b31b609204792
 
   return statvfs (fpath, buf) ? -errno : 0;
 }
