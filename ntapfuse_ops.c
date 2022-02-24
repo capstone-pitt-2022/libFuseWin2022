@@ -1,7 +1,6 @@
 /**
  * Project: ntapfuse
- * Author: Samuel Kenney <samuel.kenney48@gmail.com>
- *         August Sodora III <augsod@gmail.com>
+ * Author: Samuel Lasky <sjl79@pitt.edu>
  * File: ntapfuse_ops.c
  * License: GPLv3
  *
