@@ -2,6 +2,7 @@
  * Project: ntapfuse
  * Authors: Samuel Kenney <samuel.kenney48@gmail.com>
  *          August Sodora III <augsod@gmail.com>
+ *          Carter S. Levinson <carter.levinson@pitt.edu>
  * File: ntapfuse.c
  * License: GPLv3
  *
@@ -96,6 +97,7 @@ main (int argc, char *argv[])
       for (; i < argc; i++)
 	argv[i] = argv[i + 2];
       argc -= 2;
+      /* intialize the database here? */
 
       int ret = fuse_main (argc, argv, &ntapfuse_ops, base);
 
