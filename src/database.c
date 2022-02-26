@@ -1,7 +1,7 @@
 #include "database.h"
 #include "ntapfuse_ops.h"
 #include <unistd.h>
-//#include <limits.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -21,6 +21,8 @@ sqlite3 *DB;
 int open_db() {
         int rc, rc1, rc2;
         char *err = NULL;
+        //char logpath[PATH_MAX];
+        //char cwd[PATH_MAX];
         const char *filename = "log.db";
         /* note: backslash method is the preferred way to do multline strings */
         const char *sql1 = "CREATE TABLE IF NOT EXISTS Logs(\
@@ -34,13 +36,14 @@ int open_db() {
         const char *sql2 = "CREATE TABLE IF NOT EXISTS Quotas(\
                                    Time TEXT,\
                                    UID INT,\
-                                   USAGE INT,\
-                                   Limit INT);";
+                                   Usage INT,\
+                                   Quota INT);";
         
-        /* do we need to insert path shenagains here */
+        /* do we need to insert path shenagains here? doesn't look like it */
+
         rc = sqlite3_open(filename, &DB);
 
-        if (rc) {
+        if (rc != SQLITE_OK) {
                 /* we cast void* to string is this right? */
                 fprintf(stderr, "Can't open database connection: %s\n", 
                               (char *) sqlite3_errmsg16(DB)); 
@@ -72,7 +75,6 @@ void close_db() {
 }
 
 int log_read(char *operation, char *path, size_t size) {
-        const char *filename = "log.db";
         const char *sql = "CREATE TABLE if not exists Logs(\
                                Time TEXT,\
                                UID INT,\
@@ -82,25 +84,17 @@ int log_read(char *operation, char *path, size_t size) {
                            INSERT INTO Logs\
                                VALUES (%s, %d, %s, %d, %s);";
 
-        //char workdir[PATH_MAX];
-        //char logpath[PATH_MAX];
-        //char *logfile;
-        
         time_t now;
 
         char *sqlbuf; 
-        char timebuf[TIME_MAX];
+        char *timebuf[TIME_MAX];
 
         char *err = NULL;
         int rc;
-        
-        //getcwd(workdir, PATH_MAX);
-        //fullpath(workdir, logpath);
-        /* use realpath to get this to compile for now */
 
-        //logfile = strcat(logpath, filename);
-
+        /* TODO:insert a malloc check here */
         sqlbuf = malloc(BUF_MAX);
+        
         time(&now);
 
         strftime(timebuf, TIME_MAX, "%c", localtime(&now));
@@ -122,10 +116,7 @@ int log_read(char *operation, char *path, size_t size) {
 
 int log_write(char *operation, char *path, size_t size){
 
-  char *filename = "log.db";
   int rc;
-  //sqlite3 *DB;
-	
   /* Changed: should use NULL instead of zero for ptr*/
   char *err = NULL;
 
@@ -152,6 +143,7 @@ int log_write(char *operation, char *path, size_t size){
   
   /*Changed: we shoul not cast the type of malloc */
   /*Changed: use macros instead of constant */
+  /* TODO:insert a malloc check here */
   char *bufsql = malloc(BUF_MAX);
   time_t now;
   time(&now);
@@ -172,8 +164,6 @@ int log_write(char *operation, char *path, size_t size){
           sqlite3_free(err);
   }
 	
-  //sqlite3_close(DB);
-
   /* Changed: free the sqlbuf avoid memory leaks */
   free(bufsql);
 

@@ -22,6 +22,7 @@
 #define _XOPEN_SOURCE 500
 
 #include "ntapfuse_ops.h"
+#include "database.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -97,14 +98,22 @@ main (int argc, char *argv[])
       for (; i < argc; i++)
 	argv[i] = argv[i + 2];
       argc -= 2;
+
       /* intialize the database here? */
+      int ret1 = open_db();
 
-      int ret = fuse_main (argc, argv, &ntapfuse_ops, base);
+      int ret2 = fuse_main (argc, argv, &ntapfuse_ops, base);
 
-      if (ret < 0)
+
+      if (ret1 != 0) 
+              perror("sqlite3");
+
+      if (ret2 < 0)
 	perror ("fuse_main");
 
-      return ret;
+      
+      close_db();
+      return retf && retd;
     }
   else
     usage ();
