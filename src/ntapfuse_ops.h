@@ -28,6 +28,7 @@
 #include <fuse.h>
 #include <limits.h>
 
+/* list of fuse operations */
 int ntapfuse_getattr (const char *path, struct stat *buf);
 int ntapfuse_readlink (const char *path, char *target, size_t size);
 int ntapfuse_mknod (const char *path, mode_t mode, dev_t dev);
@@ -64,4 +65,7 @@ int ntapfuse_releasedir (const char *path, struct fuse_file_info *fi);
 int ntapfuse_access (const char *path, int mode);
 void *ntapfuse_init (struct fuse_conn_info *conn);
 
+/* helper functions */
+//void fullpath (const char *path, char *buf)
+char* addquote(char* str);
 #endif /* NTAPFUSE_H */

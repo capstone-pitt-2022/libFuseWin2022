@@ -243,7 +243,7 @@ ntapfuse_write (const char *path, const char *buf, size_t size, off_t off,
   char fpath[PATH_MAX];
   fullpath (path, fpath);
   
-  log_write("write",fpath,size);
+  log_write("Write",fpath,size);
 
   return pwrite (fi->fh, buf, size, off) < 0 ? -errno : size;
 }
