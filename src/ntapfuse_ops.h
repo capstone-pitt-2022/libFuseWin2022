@@ -66,6 +66,5 @@ int ntapfuse_access (const char *path, int mode);
 void *ntapfuse_init (struct fuse_conn_info *conn);
 
 /* helper functions */
-//void fullpath (const char *path, char *buf)
 char* addquote(char* str);
 #endif /* NTAPFUSE_H */

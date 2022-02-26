@@ -22,7 +22,6 @@
  */
 #define _XOPEN_SOURCE 500
 
-//#include "logger.h"
 #include "ntapfuse_ops.h"
 #include "database.h"
 #include <stdio.h>
@@ -71,19 +70,6 @@ ntapfuse_readlink (const char *path, char *target, size_t size)
   char fpath[PATH_MAX];
   fullpath (path, fpath);
 
-  /*
-  int result = readline (fpath, target, size) < 0 ? -errno : 0;
-
-  char* tag  = strcat("Write to: ", fpath);
-
-  char* msg;
-  if (result) 
-	  msg = "SUCCESS";
-  else 
-	  msg = "FAILED";
-  logger(tag, msg);
-  return result
-  */
   return readlink (fpath, target, size) < 0 ? -errno : 0;
 }
 
@@ -225,11 +211,8 @@ ntapfuse_read (const char *path, char *buf, size_t size, off_t off,
 
   char fpath[PATH_MAX];
   fullpath (path, fpath);
-  
-  //log("Read",fpath,size);
-  
-  
 
+  log_read("Read",fpath,size);
 
   return pread (fi->fh, buf, size, off) < 0 ? -errno : size;
 }

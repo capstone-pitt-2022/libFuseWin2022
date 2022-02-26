@@ -99,21 +99,22 @@ main (int argc, char *argv[])
 	argv[i] = argv[i + 2];
       argc -= 2;
 
-      /* intialize the database here? */
+      /* open the database connection here */
       int ret1 = open_db();
 
       int ret2 = fuse_main (argc, argv, &ntapfuse_ops, base);
 
 
       if (ret1 != 0) 
-              perror("sqlite3");
+        perror("sqlite3");
 
       if (ret2 < 0)
 	perror ("fuse_main");
 
-      
+      /* close database connection before returning */
       close_db();
-      return retf && retd;
+
+      return ret1 && ret2;
     }
   else
     usage ();
