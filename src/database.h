@@ -8,6 +8,7 @@
 #define DATABASE_H
 /* do we want to expose this pointer in interface?*/
 //sqlite3 *DB;
+#include <stddef.h>
 int init_db();
 void destroy_db(); 
 int log_write(char *, char *, size_t);

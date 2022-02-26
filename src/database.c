@@ -1,34 +1,35 @@
 #include "database.h"
 #include "ntapfuse_ops.h"
-//#include <fuse.h> ?
+#include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <stdio.h>
 #include <sqlite3.h>
 
-/*global pointer to database connection object */
+/* global pointer to database connection object */
 sqlite3 *DB;
 
 int init_db() {
         int rc, rc1, rc2;
-        char *sql1, sql2;
         char *err = NULL;
         char *filename = "log.db";
-
+        const char *sql1 = "CREATE TABLE IF NOT EXISTS Logs(\
+                                   UID INT,\
+                                   Time TEXT,\
+                                   Operation TEXT,\
+                                   Size INT,\
+                                   Path TEXT);";
         rc = sqlite3_open(filename, &DB);
 
         if (rc) {
-                fprintf(stderr, "Can't open database connection: %s\n", sqlite3_errmsg16(DB));
+                fprintf(stderr, "Can't open database connection: %s\n", 
+                              (char *)  sqlite3_errmsg16(DB));
                 sqlite3_close(DB);
                 return 1;
         }
 
-        *sql1 = "CREATE TABLE IF NOT EXISTS Logs("
-                        "UID INT,"
-                        "Time TEXT,"
-                        "Operation TEXT,"
-                        "Size INT,"
-                        "Path TEXT);";
+        /* note that the backslash is the preferred way to to multiline string in c */
 
         rc1 = sqlite3_exec(DB, sql1, NULL, NULL,&err);
 
@@ -36,10 +37,10 @@ int init_db() {
                 fprintf(stderr, "SQL error: %s\n", err);
                 sqlite3_free(err);
         }
-        *sql2 = "CREATE TABLE IF NOT EXISTS Quotas("
-                        "UID INT,"
-                        "USAGE INT,"
-                        "Limit INT);";
+        const char *sql2 = "CREATE TABLE IF NOT EXISTS Quotas(\
+                                   UID INT,\
+                                   USAGE INT,\
+                                   Limit INT);";
 
         rc2 = sqlite3_exec(DB, sql2, NULL, NULL, &err);
 
@@ -73,9 +74,15 @@ int log_write(char *operation, char *path, size_t size){
   filename = strcat(logpath,filename); //add filename to the path
   
   //sqlite3_open(filename,&DB);
-  
-  char *sql ="CREATE TABLE if not exists Logs(UID INT, Time TEXT, Operation TEXT, Size INT, Path TEXT);" 
-            "INSERT INTO Ops VALUES(%s, %s, %d,%s);" ;  // write record to a talbe called Logs
+  /* write record to a talbe called Logs */
+  char *sql ="CREATE TABLE if not exists Logs(\
+                  UID INT,\ 
+                  Time TEXT,\ 
+                  Operation TEXT,\
+                  Size INT,\
+                  Path TEXT);\ 
+              INSERT INTO Logs\
+                  VALUES(%s, %s, %d,%s);";  
   
   char *bufsql = (char*)malloc(600);
   time_t now;

@@ -1,0 +1,2 @@
+need to run pkg-config --cflags fuse and feed the output to ./configure to get this compile. 
+figure out why this is true.
