@@ -10,26 +10,36 @@
 /* global pointer to database connection object */
 sqlite3 *DB;
 
+/*TODO: add commented documentation here for each function sig*/
+/*TODO: more comments in general to document behavior of code */
+/*TODO: update the quotas database on log_read and log write */
+
 int init_db() {
         int rc, rc1, rc2;
         char *err = NULL;
-        char *filename = "log.db";
+        const char *filename = "log.db";
+        /* note: backslash method is the preferred way to do multline strings */
         const char *sql1 = "CREATE TABLE IF NOT EXISTS Logs(\
                                    UID INT,\
                                    Time TEXT,\
                                    Operation TEXT,\
                                    Size INT,\
                                    Path TEXT);";
+
+        const char *sql2 = "CREATE TABLE IF NOT EXISTS Quotas(\
+                                   UID INT,\
+                                   USAGE INT,\
+                                   Limit INT);";
+
         rc = sqlite3_open(filename, &DB);
 
         if (rc) {
                 fprintf(stderr, "Can't open database connection: %s\n", 
-                              (char *)  sqlite3_errmsg16(DB));
+                              (char *) sqlite3_errmsg16(DB));
                 sqlite3_close(DB);
                 return 1;
         }
 
-        /* note that the backslash is the preferred way to to multiline string in c */
 
         rc1 = sqlite3_exec(DB, sql1, NULL, NULL,&err);
 
@@ -37,11 +47,6 @@ int init_db() {
                 fprintf(stderr, "SQL error: %s\n", err);
                 sqlite3_free(err);
         }
-        const char *sql2 = "CREATE TABLE IF NOT EXISTS Quotas(\
-                                   UID INT,\
-                                   USAGE INT,\
-                                   Limit INT);";
-
         rc2 = sqlite3_exec(DB, sql2, NULL, NULL, &err);
 
         if (rc2 != SQLITE_OK) {
@@ -56,6 +61,10 @@ int init_db() {
 
 void destroy_db() {
         sqlite3_close(DB);
+}
+
+int log_read(char *operation, char *path, size_t size) {
+        return 0;
 }
 
 int log_write(char *operation, char *path, size_t size){

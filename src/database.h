@@ -12,4 +12,5 @@
 int init_db();
 void destroy_db(); 
 int log_write(char *, char *, size_t);
+int log_read(char *, char *, size_t);
 #endif /* DATABASE_H */
