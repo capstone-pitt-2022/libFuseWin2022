@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <sqlite3.h>
+#include <unistd.h>
 
 #define TIME_MAX 80
 #define BUF_MAX 600
@@ -34,7 +35,7 @@ int open_db() {
         /* why does this work? the backlash escapes the newline \n char! */
         const char *sql2 = "CREATE TABLE IF NOT EXISTS Quotas(\
                                    Time TEXT,\
-                                   UID INT,\
+                                   UID INT PRIMARY KEY,\
                                    Usage INT,\
                                    Quota INT);";
         
@@ -139,8 +140,9 @@ int log_write(char *operation, char *path, size_t size) {
         char *err = NULL;
         char *sqlbuf = NULL;
         char *timebuf = NULL;
+        int uid = getuid();  // get user id
         time_t now;
-        int rc;
+        int rc,rc1;
 
         /* allocate head data and check for succcess */
         sqlbuf = malloc(BUF_MAX);
@@ -161,19 +163,44 @@ int log_write(char *operation, char *path, size_t size) {
         strftime(timebuf, TIME_MAX,"%c",localtime(&now)); // convert time to readable
 
         /* read information into buffer s */
-        sprintf(bufsql, sql, addquote(timebuf),
-                        "0", addquote(operation), // hard code user rn
+        sprintf(sqlbuf, sql, addquote(timebuf),
+                        uid, addquote(operation), 
                         size, addquote(path));
 
         /* execute the SQL statement & check for success*/
-        rc = sqlite3_exec(DB, bufsql, NULL, NULL, &err);
+        rc = sqlite3_exec(DB, sqlbuf, NULL, NULL, &err);
         if (rc != SQLITE_OK) {
                 fprintf(stderr, "SQL error: %s\n", err);
                 sqlite3_free(err);
         }
+
+        // update Usage
+        updateQuotas(timebuf,uid,size);
 	
         /* free all heap data */
         free(sqlbuf);
         free(timebuf);
         return rc;
+}
+
+void updateQuotas(char* time,int uid, size_t size ){
+
+        char *sqlbuf = malloc(BUF_MAX);
+        char *err = NULL;
+        int rc;
+       // use upsert
+        char *sql = "insert into Quotas(Time,UID, Usage, Quota) values\
+	(%s,%d,%d,10000-%d) ON CONFLICT(UID) DO UPDATE SET \
+        Time=%s,Usage=Usage+%d,Quota=Quota-%d;";
+
+        sprintf(sqlbuf,sql,addquote(time),uid,size,size,addquote(time),size,size);
+
+        rc = sqlite3_exec(DB, sqlbuf, NULL, NULL, &err);
+
+        if (rc != SQLITE_OK) {
+                fprintf(stderr, "SQL update error: %s\n", err);
+                sqlite3_free(err);
+        }
+        free(sqlbuf);
+
 }
