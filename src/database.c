@@ -12,6 +12,7 @@
 
 #define TIME_MAX 80
 #define BUF_MAX 600
+#define QUOTA 1000000
 
 /* global pointer to database connection object */
 sqlite3 *DB;
@@ -30,6 +31,8 @@ int open_db() {
                                    UID INT,\
                                    Operation TEXT,\
                                    Size INT,\
+                                   Status TEXT,\
+                                   errorCode INT,\
                                    Path TEXT);";
 
         /* why does this work? the backlash escapes the newline \n char! */
@@ -127,16 +130,18 @@ int log_read(char *operation, char *path, size_t size) {
         return rc;
 }
 
-int log_write(char *operation, char *path, size_t size) {
+int log_write(char *operation, char *path, size_t size, size_t usage, char* rstatus, int errorCode) {
         /* SQL commands to compile */
         const char *sql = "CREATE TABLE if not exists Logs(\
                                Time TEXT,\ 
                                UID INT,\ 
                                Operation TEXT,\
                                Size INT,\
+                               Status TEXT,\
+                               errorCode INT,\
                                Path TEXT);\ 
                            INSERT INTO Logs\
-                               VALUES(%s, %d, %s, %d, %s);";  
+                               VALUES(%s, %d, %s, %d, %s,%d, %s);";  
         char *err = NULL;
         char *sqlbuf = NULL;
         char *timebuf = NULL;
@@ -165,7 +170,7 @@ int log_write(char *operation, char *path, size_t size) {
         /* read information into buffer s */
         sprintf(sqlbuf, sql, addquote(timebuf),
                         uid, addquote(operation), 
-                        size, addquote(path));
+                        size, addquote(rstatus),errorCode,addquote(path));
 
         /* execute the SQL statement & check for success*/
         rc = sqlite3_exec(DB, sqlbuf, NULL, NULL, &err);
@@ -175,7 +180,11 @@ int log_write(char *operation, char *path, size_t size) {
         }
 
         // update Usage
-        updateQuotas(timebuf,uid,size);
+        int updateSize=(int)usage;
+        
+        if(strcmp(operation,"Delete")==0 || strcmp(operation,"Rmdir")==0) {updateSize=updateSize*-1;}
+        
+        updateQuotas(timebuf,uid,updateSize);
 	
         /* free all heap data */
         free(sqlbuf);
@@ -183,17 +192,27 @@ int log_write(char *operation, char *path, size_t size) {
         return rc;
 }
 
-void updateQuotas(char* time,int uid, size_t size ){
+void updateQuotas(char* time,int uid, int size ){
 
         char *sqlbuf = malloc(BUF_MAX);
         char *err = NULL;
         int rc;
+        char *sql;
        // use upsert
-        char *sql = "insert into Quotas(Time,UID, Usage, Quota) values\
-	(%s,%d,%d,10000-%d) ON CONFLICT(UID) DO UPDATE SET \
-        Time=%s,Usage=Usage+%d,Quota=Quota-%d;";
+       	if(size>=0){
+       		sql = "insert into Quotas(Time,UID, Usage, Quota) values\
+			(%s,%d,%d,%d-%d) ON CONFLICT(UID) DO UPDATE SET \
+        		Time=%s,Usage=Usage+%d,Quota=Quota-%d;";
+       	}else{
+       		size=size*-1;
+       		sql = "insert into Quotas(Time,UID, Usage, Quota) values\
+			(%s,%d,%d,%d-%d) ON CONFLICT(UID) DO UPDATE SET \
+        		Time=%s,Usage=Usage-%d,Quota=Quota+%d;";
+       	
+       	}
+        
 
-        sprintf(sqlbuf,sql,addquote(time),uid,size,size,addquote(time),size,size);
+        sprintf(sqlbuf,sql,addquote(time),uid,size,QUOTA,size,addquote(time),size,size);
 
         rc = sqlite3_exec(DB, sqlbuf, NULL, NULL, &err);
 
@@ -203,4 +222,18 @@ void updateQuotas(char* time,int uid, size_t size ){
         }
         free(sqlbuf);
 
+}
+
+int getDirSize(char* dirPath){
+
+        FILE *fp;
+	char res[100];
+        char commandBuf[100];
+	char *command = "du -sh %s";
+        sprintf(commandBuf,command,dirPath);
+	fp = popen(commandBuf,"r");
+	fread(res,50,1,fp);
+        int size = atoi(strtok(res, " "))*1024;
+	printf("%d\n",size);
+        return size;
 }

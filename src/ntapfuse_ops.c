@@ -37,10 +37,15 @@
 #include <sys/types.h>
 #include <sqlite3.h>
 
+#define BlockSize 4096
+
 /**
  * Appends the path of the root filesystem to the given path, returning
  * the result in buf.
  */
+ int newfile=0;
+
+
 void
 fullpath (const char *path, char *buf)
 {
@@ -78,6 +83,8 @@ ntapfuse_mknod (const char *path, mode_t mode, dev_t dev)
 {
   char fpath[PATH_MAX];
   fullpath (path, fpath);
+  newfile=1;
+
 
   return mknod (fpath, mode, dev) ? -errno : 0;
 }
@@ -87,6 +94,8 @@ ntapfuse_mkdir (const char *path, mode_t mode)
 {
   char fpath[PATH_MAX];
   fullpath (path, fpath);
+
+  //log_write("Mkdir",fpath,0,BlockSize);
 
   return mkdir (fpath, mode | S_IFDIR) ? -errno : 0;
 }
@@ -105,6 +114,10 @@ ntapfuse_rmdir (const char *path)
 {
   char fpath[PATH_MAX];
   fullpath (path, fpath);
+
+  size_t size = getDirSize(fpath);
+
+  //log_write("Rmdir",fpath,size,size);
 
   return rmdir (fpath) ? -errno : 0;
 }
@@ -225,10 +238,35 @@ ntapfuse_write (const char *path, const char *buf, size_t size, off_t off,
 {
   char fpath[PATH_MAX];
   fullpath (path, fpath);
-  
-  log_write("Write",fpath,size);
 
-  return pwrite (fi->fh, buf, size, off) < 0 ? -errno : size;
+  int res;
+  int initFileSize=0;
+  int usage=0;
+  FILE *f;
+
+  if (newfile==1)  // if the file is new
+  {
+      usage=size<BlockSize?BlockSize:size;
+      newfile=0;
+      
+  }else{  // if the file already exist
+      f = fopen(fpath, "r");
+      fseek(f, 0, SEEK_END); 
+      initFileSize = ftell(f);
+      fclose(f);
+      
+      if(initFileSize<BlockSize) usage = initFileSize+size>BlockSize?initFileSize+size-BlockSize:0;
+      else usage = size;
+
+  }
+
+  res = pwrite (fi->fh, buf, size, off);
+
+  if(res<0) log_write("Write",fpath,size,0, "Failed", -errno);
+  else log_write("Write",fpath,size,usage,"Success",1);
+  
+
+  return res < 0 ? -errno : size;
 }
 
 int
