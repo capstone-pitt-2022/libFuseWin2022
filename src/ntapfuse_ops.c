@@ -88,8 +88,6 @@ ntapfuse_mkdir (const char *path, mode_t mode)
   char fpath[PATH_MAX];
   fullpath (path, fpath);
 
-  log_write("Mkdir",fpath,4096);
-
   return mkdir (fpath, mode | S_IFDIR) ? -errno : 0;
 }
 
@@ -107,10 +105,6 @@ ntapfuse_rmdir (const char *path)
 {
   char fpath[PATH_MAX];
   fullpath (path, fpath);
-
-  size_t size = getDirSize(fpath);
-
-  log_write("Rmdir",fpath,size);
 
   return rmdir (fpath) ? -errno : 0;
 }
@@ -231,19 +225,8 @@ ntapfuse_write (const char *path, const char *buf, size_t size, off_t off,
 {
   char fpath[PATH_MAX];
   fullpath (path, fpath);
-  int newfile=0;
-  size_t newSize=size;
-  FILE *file;
-  if (file = fopen(fpath, "r")) 
-    {
-        fclose(file);
-        newfile=1;
-    }
-    
-  newSize = newfile && size<4096 ? 4096:size;
   
-  
-  log_write("Write",fpath,newSize);
+  log_write("Write",fpath,size);
 
   return pwrite (fi->fh, buf, size, off) < 0 ? -errno : size;
 }
