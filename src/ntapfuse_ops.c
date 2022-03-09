@@ -21,6 +21,7 @@
  * along with ntapfuse. If not, see <http://www.gnu.org/licenses/>.
  */
 #define _XOPEN_SOURCE 500
+#define BLOCK_SIZE 4096
 
 #include "ntapfuse_ops.h"
 #include "database.h"
@@ -37,15 +38,15 @@
 #include <sys/types.h>
 #include <sqlite3.h>
 
-#define BlockSize 4096
+
+/*global variable to track?*/
+int newfile=0;
+
 
 /**
  * Appends the path of the root filesystem to the given path, returning
  * the result in buf.
  */
- int newfile=0;
-
-
 void
 fullpath (const char *path, char *buf)
 {
@@ -95,7 +96,7 @@ ntapfuse_mkdir (const char *path, mode_t mode)
   char fpath[PATH_MAX];
   fullpath (path, fpath);
 
-  //log_write("Mkdir",fpath,0,BlockSize);
+  //log_file_op("Mkdir",fpath,0,BlockSize);
 
   return mkdir (fpath, mode | S_IFDIR) ? -errno : 0;
 }
@@ -117,7 +118,7 @@ ntapfuse_rmdir (const char *path)
 
   size_t size = getDirSize(fpath);
 
-  //log_write("Rmdir",fpath,size,size);
+  //log_file_op("Rmdir",fpath,size,size);
 
   return rmdir (fpath) ? -errno : 0;
 }
@@ -237,34 +238,34 @@ ntapfuse_write (const char *path, const char *buf, size_t size, off_t off,
 	    struct fuse_file_info *fi)
 {
   char fpath[PATH_MAX];
-  fullpath (path, fpath);
-
   int res;
   int initFileSize=0;
   int usage=0;
   FILE *f;
 
-  if (newfile==1)  // if the file is new
-  {
-      usage=size<BlockSize?BlockSize:size;
+  fullpath (path, fpath);
+
+  if (newfile==1) { /* if file is new */
+      usage=size<BLOCK_SIZE?BLOCK_SIZE:size;
       newfile=0;
-      
-  }else{  // if the file already exist
+  } else {  /* if the file already exist */
       f = fopen(fpath, "r");
       fseek(f, 0, SEEK_END); 
       initFileSize = ftell(f);
       fclose(f);
       
-      if(initFileSize<BlockSize) usage = initFileSize+size>BlockSize?initFileSize+size-BlockSize:0;
-      else usage = size;
-
+      if(initFileSize<BLOCK_SIZE) 
+              usage = initFileSize+size>BLOCK_SIZE?initFileSize+size-BLOCK_SIZE:0;
+      else 
+              usage = size;
   }
 
   res = pwrite (fi->fh, buf, size, off);
 
-  if(res<0) log_write("Write",fpath,size,0, "Failed", -errno);
-  else log_write("Write",fpath,size,usage,"Success",1);
-  
+  if(res < 0) 
+          log_file_op("Write",fpath,size,0, "Failed", -errno);
+  else 
+          log_file_op("Write",fpath,size,usage,"Success", 0);
 
   return res < 0 ? -errno : size;
 }

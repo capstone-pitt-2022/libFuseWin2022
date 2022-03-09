@@ -9,7 +9,6 @@
 #include <stddef.h>
 int open_db();
 void close_db(); 
-int log_write(char *, char *, size_t, size_t,char *, int);
-int log_read(char *, char *, size_t);
+int log_file_op(char *, char *, size_t, size_t, char*, int );
 int getDirSize(char *);
 #endif /* DATABASE_H */

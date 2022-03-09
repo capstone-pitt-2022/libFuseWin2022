@@ -114,7 +114,7 @@ main (int argc, char *argv[])
       /* close database connection before returning */
       close_db();
 
-      return ret1 && ret2;
+      return ret1 || ret2;
     }
   else
     usage ();
