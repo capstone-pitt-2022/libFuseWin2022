@@ -183,7 +183,7 @@ int updateQuotas(char* time,int uid, int size ){
         }
 
         free(sqlbuf);
-        return rc
+        return rc;
 }
 
 /* 
