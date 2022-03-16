@@ -11,3 +11,5 @@ The following packages need to be installed using
     $ sudo apt-get install <pkg-name>
 * fuse
 * libfuse-dev
+* sqlite3
+* libsqlite3-dev
