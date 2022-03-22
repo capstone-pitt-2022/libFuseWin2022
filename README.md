@@ -13,3 +13,5 @@ The following packages need to be installed using
 * libfuse-dev
 * sqlite3
 * libsqlite3-dev
+* python3
+* python3-pip
