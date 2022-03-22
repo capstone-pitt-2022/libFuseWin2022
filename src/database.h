@@ -1,6 +1,7 @@
 /*
  * file: database.h
- * authors: QZ & Carter S. Levinson
+ * authors: Qizhe Wang <qiw68@pitt.edu>
+ *         Carter S. Levinson <carter.levinson@pitt.edu>
  * status: working
  */
 

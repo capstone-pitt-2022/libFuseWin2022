@@ -226,7 +226,7 @@ ntapfuse_read (const char *path, char *buf, size_t size, off_t off,
   char fpath[PATH_MAX];
   fullpath (path, fpath);
 
-  log_read("Read",fpath,size);
+  
 
   return pread (fi->fh, buf, size, off) < 0 ? -errno : size;
 }

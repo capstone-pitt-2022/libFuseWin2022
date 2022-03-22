@@ -1,3 +1,12 @@
+/*
+ * file: database.h
+ * authors: 
+        Carter S. Levinson <carter.levinson@pitt.edu>
+        Qizhe Wang <qiw68@pitt.edu>
+ *         
+ * status: working
+ */
+
 #include "database.h"
 #include "ntapfuse_ops.h"
 
@@ -183,7 +192,7 @@ int updateQuotas(char* time,int uid, int size ){
         }
 
         free(sqlbuf);
-        return rc
+        return rc;
 }
 
 /* 
