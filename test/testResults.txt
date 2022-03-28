@@ -1,7 +1,7 @@
 ============================= test session starts ==============================
 platform linux -- Python 3.9.7, pytest-6.0.2, py-1.10.0, pluggy-0.13.0 -- /usr/bin/python3
 cachedir: .pytest_cache
-rootdir: /home/qizhe/Desktop/libfuse/libFuseWin2022
+rootdir: /home/qizhe/Desktop/libfuse/forPushing/libFuseWin2022
 collecting ... creating basedir and mountpoint...
 collected 8 items
 
@@ -24,4 +24,4 @@ test/ntapfuse_test.py::TestClass::test_truncate PASSED
 test/ntapfuse_test.py::TestClass::test_read PASSED
 test/ntapfuse_test.py::TestClass::test_utime PASSED
 
-============================== 8 passed in 0.91s ===============================
+============================== 8 passed in 0.96s ===============================

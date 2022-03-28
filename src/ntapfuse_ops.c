@@ -92,7 +92,7 @@ ntapfuse_mkdir (const char *path, mode_t mode)
     fullpath (path, fpath); 
     int res;
     res = mkdir (fpath, mode | S_IFDIR);    
-    if(res < 0){
+    if(res < 0) {
         log_file_op("Mkdir",fpath,0,0, "Failed", -errno);
     }else{
         log_file_op("Mkdir",fpath,0,BLOCK_SIZE,"Success", 0);
@@ -124,7 +124,7 @@ ntapfuse_rmdir (const char *path)
     size_t size = getDirSize(fpath);
 
 
-    if(res < 0){
+    if(res < 0) {
         log_file_op("Rmdir",fpath,0,0, "Failed", -errno);
     }else{
         log_file_op("Rmdir",fpath,0,BLOCK_SIZE,"Success", 0);
@@ -212,7 +212,7 @@ ntapfuse_open (const char *path, struct fuse_file_info *fi)
     fullpath (path, fpath);
 
     int fh = open (fpath, fi->flags);
-    if (fh < 0){
+    if (fh < 0) {
         return -errno;
     }
 
@@ -222,7 +222,7 @@ ntapfuse_open (const char *path, struct fuse_file_info *fi)
     return 0;
 }
 
-char* addquote(char* str){
+char* addquote(char* str) {
     char* newstr = calloc(1,strlen(str)+2);
     *newstr='\'';
     strcat(newstr,str);
@@ -268,7 +268,7 @@ ntapfuse_write (const char *path, const char *buf, size_t size, off_t off,
         initFileSize = ftell(f);
         fclose(f);
 
-        if(initFileSize<BLOCK_SIZE){
+        if(initFileSize<BLOCK_SIZE) {
             usage = initFileSize+size>BLOCK_SIZE?initFileSize+size-BLOCK_SIZE:0;
         }else{
             usage = size;
@@ -280,7 +280,7 @@ ntapfuse_write (const char *path, const char *buf, size_t size, off_t off,
 
     res = pwrite (fi->fh, buf, size, off);
 
-    if(res < 0){
+    if(res < 0) {
         log_file_op("Write",fpath,size,0, "Failed", -errno);
     }else{
         log_file_op("Write",fpath,size,usage,"Success", 0);
@@ -357,7 +357,7 @@ ntapfuse_opendir (const char *path, struct fuse_file_info *fi)
     char fpath[PATH_MAX];
     fullpath (path, fpath); 
     DIR *dir = opendir (fpath);
-    if (dir == NULL){
+    if (dir == NULL) {
         return -errno;
     }
     
@@ -371,12 +371,12 @@ ntapfuse_readdir (const char *path, void *buf, fuse_fill_dir_t fill, off_t off,
 {
     struct dirent *de = NULL;
 
-    while ((de = readdir ((DIR *) fi->fh)) != NULL){    
+    while ((de = readdir ((DIR *) fi->fh)) != NULL) {    
         struct stat st;
         memset (&st, 0, sizeof (struct stat));
         st.st_ino = de->d_ino;
         st.st_mode = de->d_type << 12;    
-        if (fill (buf, de->d_name, &st, 0)){
+        if (fill (buf, de->d_name, &st, 0)) {
             break;
         }
         
@@ -405,3 +405,4 @@ ntapfuse_init (struct fuse_conn_info *conn)
 {
     return (fuse_get_context())->private_data;
 }
+

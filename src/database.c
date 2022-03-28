@@ -92,17 +92,17 @@ int updateQuotas(char* time,int uid, int size )
         fprintf(stderr,"ERROR: couldn't allocate SQL buffer\n");
         return -ENOMEM;
     }
-    // here we search for the user's record, and update its usage and quota,
-    // and lastest quota alwasy equal initail quota - usage.
-    // size is positive, we need to increase usage using upsert(if record exist, update; 
-    // otherwise insert new record)
+    /*  here we search for the user's record, and update its usage and quota,
+        and lastest quota alwasy equal initail quota - usage.
+        size is positive, we need to increase usage using upsert(if record exist, update; 
+        otherwise insert new record) */
     if (size >= 0) {
         sql = "INSERT INTO Quotas(Time,UID, Usage, Remaining_Quota) VALUES\
 		(%s,%d,%d,%d-%d) ON CONFLICT(UID) DO UPDATE SET \
     		Time=%s,Usage=Usage+%d,Remaining_Quota=Remaining_Quota-%d;";
     } else {
-        // size is negative, meaning we need to decreasing usage, but the previous sqlite string doesn't work
-        // because it would become "usage=usage+-size", so we use a new string with a preset "-" in it.
+        /* size is negative, meaning we need to decreasing usage, but the previous sqlite string doesn't work
+        because it would become "usage=usage+-size", so we use a new string with a preset "-" in it. */
     	size *= -1;
     	sql = "INSERT INTO Quotas(Time,UID, Usage, Remaining_Quota) VALUES\
 		(%s,%d,%d,%d-%d) ON CONFLICT(UID) DO UPDATE SET \
@@ -205,7 +205,7 @@ int getDirSize(char* dirPath)
     sprintf(commandBuf,command,dirPath);
 	fp = popen(commandBuf,"r");
 	int ret = fread(res,50,1,fp);
-    if(ret>0){
+    if(ret>0) {
         size = atoi(strtok(res, " "))*1024;
     }else{
         return -1;
@@ -213,4 +213,5 @@ int getDirSize(char* dirPath)
 	printf("%d\n",size);
     return size;
 }
+
 

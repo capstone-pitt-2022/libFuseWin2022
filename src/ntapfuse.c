@@ -76,7 +76,7 @@ usage ()
 int
 main (int argc, char *argv[])
 {
-    if (argc < 3){
+    if (argc < 3) {
         usage ();
     }
         
@@ -85,23 +85,23 @@ main (int argc, char *argv[])
     char *path = argv[2];
 
     char fpath[PATH_MAX];
-    if (realpath (path, fpath) == NULL){
+    if (realpath (path, fpath) == NULL) {
         perror ("main_realpath");
     }
 
 
-    if (strcmp (command, "mount") == 0){
+    if (strcmp (command, "mount") == 0) {
         if (argc < 4){
             usage ();
         }
 
-        if (realpath (argv[2], base) == NULL){
+        if (realpath (argv[2], base) == NULL) {
             perror ("main_realpath");
         }
     
 
         int i = 1;
-        for (; i < argc; i++){
+        for (; i < argc; i++) {
             argv[i] = argv[i + 2];
         }
     	    
@@ -113,12 +113,12 @@ main (int argc, char *argv[])
         int ret2 = fuse_main (argc, argv, &ntapfuse_ops, base);
 
 
-        if (ret1 != 0){
+        if (ret1 != 0) {
             perror("sqlite3");
         } 
 
 
-        if (ret2 < 0){
+        if (ret2 < 0) {
             perror ("fuse_main");
         }
     
@@ -135,4 +135,5 @@ main (int argc, char *argv[])
 
     return 0;
 }
+
 
