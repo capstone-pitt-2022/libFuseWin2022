@@ -76,8 +76,10 @@ usage ()
 int
 main (int argc, char *argv[])
 {
-    if (argc < 3)
+    if (argc < 3){
         usage ();
+    }
+        
 
     char *command = argv[1];
     char *path = argv[2];
@@ -133,3 +135,4 @@ main (int argc, char *argv[])
 
     return 0;
 }
+

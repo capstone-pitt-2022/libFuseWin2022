@@ -33,8 +33,6 @@ numLogs = 0
 
 # need to do more thinking about how this will work
 def setup_test_env():
-    # con = sqlite3.connect('log.db')
-    # cur = con.cursor()
     print("creating basedir and mountpoint...")
     os.chdir("..")
     cmd = '''
@@ -72,7 +70,7 @@ class TestClass:
 
         os.chdir("./%s"%mountName)
 
-        # create some empty folders
+        print("creating some empty folders")
       
         for i in range(30):
             res = subprocess.run('mkdir testFolder%s'%str(i),shell=True,check=True,capture_output=True,text=True)
@@ -84,7 +82,7 @@ class TestClass:
                 numLogs+=1
                 
 
-        # check if usage and logs match
+        print("checking if usage and logs match...")
         os.chdir("..")  
         uid=os.getuid()
         usageRes = check_quota_db(self,uid)
@@ -106,7 +104,7 @@ class TestClass:
 
         os.chdir("./%s"%mountName)
 
-        # delete some empty folders that mkdir create
+        print("deleting some empty folders that mkdir create")
         for i in range(10):
             res = subprocess.run('rmdir testFolder%s'%str(i),shell=True,check=True,capture_output=True,text=True)
             if res.stderr:
@@ -127,6 +125,7 @@ class TestClass:
             '''%(baseDir,baseDir,mountName,mountName,mountName)
 
         # check if usage and logs match
+        print("checking if usage and logs match...")
         os.system(cmd)
         uid=os.getuid()
         usageRes = check_quota_db(self,uid)
@@ -180,15 +179,8 @@ def check_quota_db(self,uid):
     return res[0][0]  # return the usage of an user if valid
 
 
-
-
-
-
-
-
-
-
-
+# May use it for destroying the testing env
 def destroy_test_env():
-    # con.close()
-    return
+
+    pass
+
