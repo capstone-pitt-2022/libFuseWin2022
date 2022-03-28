@@ -50,7 +50,7 @@ int open_db()
                                Time TEXT,\
                                UID INT PRIMARY KEY,\
                                Usage INT,\
-                               Quota INT);";
+                               Remaining_Quota INT);";
     
     /* open the database connection */
     rc1 = sqlite3_open(filename, &DB);
@@ -97,16 +97,16 @@ int updateQuotas(char* time,int uid, int size )
     // size is positive, we need to increase usage using upsert(if record exist, update; 
     // otherwise insert new record)
     if (size >= 0) {
-        sql = "INSERT INTO Quotas(Time,UID, Usage, Quota) VALUES\
+        sql = "INSERT INTO Quotas(Time,UID, Usage, Remaining_Quota) VALUES\
 		(%s,%d,%d,%d-%d) ON CONFLICT(UID) DO UPDATE SET \
-    		Time=%s,Usage=Usage+%d,Quota=Quota-%d;";
+    		Time=%s,Usage=Usage+%d,Remaining_Quota=Remaining_Quota-%d;";
     } else {
         // size is negative, meaning we need to decreasing usage, but the previous sqlite string doesn't work
         // because it would become "usage=usage+-size", so we use a new string with a preset "-" in it.
     	size *= -1;
-    	sql = "INSERT INTO Quotas(Time,UID, Usage, Quota) VALUES\
+    	sql = "INSERT INTO Quotas(Time,UID, Usage, Remaining_Quota) VALUES\
 		(%s,%d,%d,%d-%d) ON CONFLICT(UID) DO UPDATE SET \
-    		Time=%s,Usage=Usage-%d,Quota=Quota+%d;";
+    		Time=%s,Usage=Usage-%d,Remaining_Quota=Remaining_Quota+%d;";
     }
     
     sprintf(sqlbuf,sql,addquote(time),
