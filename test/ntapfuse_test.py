@@ -222,7 +222,6 @@ class TestClass:
         print("User2 expecting user usage: %s  result is: %s"%(str(usage2),str(usageRes2)))
 
         test_done()
-        destroy_test_env()
 
         assert usageRes1==usage1 and numLogsRes1==numLogs1 and usageRes2==usage2 and numLogsRes2==numLogs2
 
@@ -239,7 +238,71 @@ class TestClass:
         return 
     
     def test_truncate(self):
-        return 
+        # two case: greater than blocksize and smaller than blocksize
+
+        init_test()
+
+        testtext = "test truncate ...."*2000
+        print("writing size is: "+str(len(testtext)))
+        testuser1 = userList[1]
+        testuser2 = userList[2]
+
+        uid1 = get_uid_from_username(testuser1)
+        uid2 = get_uid_from_username(testuser2)
+
+        iniUsage1 = check_quota_db(uid1)
+        iniUsage2 = check_quota_db(uid2)
+
+        testfile1 = "truncateTest1.txt"
+        testfile2 = "truncateTest2.txt"
+        truncateSize1 = 3000
+        truncateSize2 =  10000
+        os.chdir("%s"%workDir)
+        print("mounting and creating test files to truncate...")
+        
+        cmd='''
+        sudo umount %s
+        sudo runuser %s << EOF
+        ntapfuse mount %s %s
+        cd %s
+        echo %s > %s
+        truncate -s %s %s
+        cd %s
+        '''%(mountName,testuser1,baseDir,mountName,mountDir,testtext,testfile1,truncateSize1,testfile1,workDir)
+        os.system(cmd)
+
+
+        print("switching to another user to create file and truncate....")
+
+        cmd='''
+        sudo umount %s
+        sudo runuser %s << EOF
+        ntapfuse mount %s %s
+        cd %s
+        echo %s > %s
+        truncate -s %s %s
+        cd %s
+        sudo umount %s
+        sudo runuser %s << EOF
+        '''%(mountName,testuser2,baseDir,mountName,mountDir,testtext,testfile2,truncateSize2,testfile2,workDir,mountName,oriUser)
+
+
+        os.system(cmd)
+
+        truncateSize1 = blockSize if truncateSize1<blockSize else truncateSize1
+        truncateSize2 = blockSize if truncateSize2<blockSize else truncateSize2
+
+        iniUsage1 += truncateSize1
+        iniUsage2 += truncateSize2
+        logUsage1 = check_quota_db(uid1)
+        logUsage2 = check_quota_db(uid2)
+
+        test_done()
+
+        # for some reason, can't put this outside the testclass, will cause error
+        destroy_test_env()
+
+        assert iniUsage1== logUsage1 and iniUsage2==logUsage2
 
     def test_read(self):
         return
@@ -249,7 +312,6 @@ class TestClass:
 
 def check_log_db(uid,op=None):
     con = sqlite3.connect(dbName)
-    # uid=os.getuid()
     cur = con.cursor()
     if op:
         cur.execute("select count(*) from Logs where UID=%s and Operation='%s'"%(uid,op))
