@@ -7,6 +7,8 @@ import sqlite3
 import regex
 import pytest
 import os
+import getpass
+
 
 # Note: that there is shell builtin command to interface with every syscall
 
@@ -16,13 +18,6 @@ import os
 # 3. Assert: examine the resulting state for expected behaviour
 # 4. Cleanup: the test must leave up no trace
 
-# TODO: set up fixtures for temp environment and think about invocation
-# procedures
-# TODO: define clear list of what we want to be tested, what the edge cases are
-# and ideal behavior
-# TODO: integrate with sqlite 3
-# TODO: think about how the OS and the subprocess layer affect our testing
-# environment and procedure
 
 mountName = "mountPoint"
 baseDir = "testbase"
@@ -30,111 +25,207 @@ dbName = "log.db"
 blockSize = 4096
 usage=0
 numLogs = 0
+oriDir = os.getcwd()
+workDir = oriDir[:-5] if oriDir[-5:] == "/test" else oriDir
+mountDir = workDir+"/%s"%mountName
 
-# need to do more thinking about how this will work
+userList = ["user666","user888","user999"]
+
+# get current username
+oriUser = getpass.getuser()
+oriUid = os.getuid()
+
+
+# setup_test_env mainly create some test users and make install
 def setup_test_env():
-    print("creating basedir and mountpoint...")
-    os.chdir("..")
+
+    os.system("sudo make install")  
+    print("creating some test users...")    
+
+    for user in userList:
+        cmd = '''
+        sudo useradd -p $(openssl passwd -1 password) %s
+        sudo adduser %s sudo
+        sudo adduser %s %s
+        '''%(user,user,user,oriUser)
+        os.system(cmd)
+
+def destroy_test_env():
+    print("deleting all test users...")
+    for user in userList:
+        os.system("sudo userdel -f %s"%user)
+    # go back to the test directory
+    os.chdir(oriDir) 
+    
+
+
+# will be put at the beginning of each test. 
+# It create base and mountpoint directories, and give permission to group users
+
+def init_test():
+
+    print("\ncreating basedir and mountpoint...")
+    os.chdir("%s"%workDir)
     cmd = '''
-    rmdir %s/*
-    rmdir %s
-    sudo make install
-    sudo umount %s 
-    rmdir %s
+    rm %s
     mkdir %s   
     mkdir %s
-    rm %s
-    '''%(baseDir,baseDir,mountName,mountName,mountName,baseDir,dbName)
+    chmod ugo+rwx %s
+    chmod ugo+rwx %s
+    ntapfuse mount %s %s
+    chmod ugo+rwx %s
+    '''%(dbName,mountName,baseDir,mountName,baseDir,baseDir,mountName,dbName)
 
     os.system(cmd)
-    res=subprocess.run("ntapfuse mount %s %s"%(baseDir,mountName),shell=True,check=True,capture_output=True,text=True)
-    if res.stderr:
-        print("stderr:",res.stderr)
+
+# will be put at the end of each test; It removes all the test files and folders
+
+def test_done():
+    print("removing all test files and folders...")
+    cmd = '''
+    cd %s
+    rm -r %s -f
+    sudo umount %s
+    rm -r %s -f
+    '''%(workDir,baseDir,mountName,mountName)
+    
+    os.system(cmd)
 
 
+def get_uid_from_username(username):
+    p = subprocess.run("id -u %s"%username, shell=True,capture_output=True)
+    uid = p.stdout.decode("utf-8")
+    return str(int(uid))
 
 
 setup_test_env()
 
-
-
 class TestClass:
 
-   
     def test_mkdir(self):
 
-        global usage
-        global numLogs
+        init_test()
+
+        testuser1 = oriUser
+        testuser2 = userList[1]
+        uid1 = get_uid_from_username(testuser1)
+        uid2 = get_uid_from_username(testuser2)
+        numLogs1 = check_log_db(uid1,"Mkdir")
+        numLogs2 = check_log_db(uid2,"Mkdir")
+        usage1 = check_quota_db(uid1)
+        usage2 = check_quota_db(uid2)
+        
 
         print("Testing mkdir...")
+        
+        cmd='''
+        cd %s
+        mkdir folder%s
+        cd %s
+        '''
+        print("creating some empty folders for current user...")
+        for i in range(22):
+            os.system(cmd%(mountDir,i,workDir))
+            numLogs1+=1
+            usage1+=blockSize
 
-        os.chdir("./%s"%mountName)
+       
+        print("switching to another user and create some empty folders")
 
-        print("creating some empty folders")
-      
-        for i in range(30):
-            res = subprocess.run('mkdir testFolder%s'%str(i),shell=True,check=True,capture_output=True,text=True)
-            
-            if res.stderr:
-                print("stderr:",res.stderr)
-            else:
-                usage+=blockSize
-                numLogs+=1
-                
+        cmd='''
+        sudo umount %s
+        rmdir %s/*
+        sudo runuser %s << EOF
+        ntapfuse mount %s %s
+        cd %s
+        mkdir folder%s
+        '''
 
-        print("checking if usage and logs match...")
-        os.chdir("..")  
-        uid=os.getuid()
-        usageRes = check_quota_db(self,uid)
-        numLogsRes = check_log_db(self,uid,None)
+        for i in range(30,50):
+            os.system(cmd%(mountName,baseDir,testuser2,baseDir,mountName,mountDir,i))
+            numLogs2+=1
+            usage2+=blockSize
 
-        print("expecting numbers of logs: %s  result is: %s"%(str(numLogs),str(numLogs)))
-        print("expecting user usage: %s  result is: %s"%(str(usage),str(usageRes)))
+        usageRes1 = check_quota_db(uid1)
+        numLogsRes1 = check_log_db(uid1,"Mkdir")
 
+        usageRes2 = check_quota_db(uid2)
+        numLogsRes2 = check_log_db(uid2,"Mkdir")
 
-        assert usageRes==usage and numLogsRes==numLogs
+        print("User1 expecting numbers of logs: %s  result is: %s"%(str(numLogs1),str(numLogsRes1)))
+        print("User1 expecting user usage: %s  result is: %s"%(str(usage1),str(usageRes1)))
+        print("User2 expecting numbers of logs: %s  result is: %s"%(str(numLogs2),str(numLogsRes2)))
+        print("User2 expecting user usage: %s  result is: %s"%(str(usage2),str(usageRes2)))
+
+        test_done()
+
+        assert usageRes1==usage1 and numLogsRes1==numLogs1 and usageRes2==usage2 and numLogsRes2==numLogs2
         
 
      
     def test_rmdir(self):
-        # need to assume mkdir work
+        init_test()
+        # need to assume mkdir work, otherwise there is no folder to delete
         print("Testing rmdir...")
-        global usage
-        global numLogs
+        testuser1 = oriUser
+        testuser2 = userList[1]
+        uid1 = get_uid_from_username(testuser1)
+        uid2 = get_uid_from_username(testuser2)
+        numLogs1 = check_log_db(uid1,"Rmdir")
+        numLogs2 = check_log_db(uid2,"Rmdir")
+        usage1 = check_quota_db(uid1)
+        usage2 = check_quota_db(uid2)
 
-        os.chdir("./%s"%mountName)
+        cmd='''
+        cd %s
+        mkdir folder%s
+        mkdir folder%s
+        rmdir folder%s
+        cd %s
+        '''
 
-        print("deleting some empty folders that mkdir create")
-        for i in range(10):
-            res = subprocess.run('rmdir testFolder%s'%str(i),shell=True,check=True,capture_output=True,text=True)
-            if res.stderr:
-                print("stderr:",res.stderr)
-            else:
-                usage-=blockSize
-                numLogs+=1
+        print("creating some folders and then delete some of them...")
+        for i in range(18):
+            os.system(cmd%(mountDir,i+18,i,i,workDir))
+            numLogs1+=1
+            usage1+=blockSize
 
-        os.chdir("..")
 
-        # mkdir rmdir test done, remove test folders
-        cmd = '''
-            rmdir %s/*
-            rmdir %s
-            sudo umount %s
-            rm %s/* -f
-            rmdir %s
-            '''%(baseDir,baseDir,mountName,mountName,mountName)
+        cmd='''
+        sudo umount %s
+        sudo runuser %s << EOF
+        ntapfuse mount %s %s
+        cd %s
+        mkdir folder%s
+        mkdir folder%s
+        rmdir folder%s
+        cd %s
+        '''
 
+        print("switch to another user to do the same stuff...")
+        for i in range(100,120):
+            os.system(cmd%(mountName,testuser2,baseDir,mountName,mountDir,i+40,i,i,workDir))
+            numLogs2+=1
+            usage2+=blockSize
+           
         # check if usage and logs match
-        print("checking if usage and logs match...")
-        os.system(cmd)
-        uid=os.getuid()
-        usageRes = check_quota_db(self,uid)
-        numLogsRes = check_log_db(self,uid)
+        
+        usageRes1 = check_quota_db(uid1)
+        numLogsRes1 = check_log_db(uid1,"Rmdir")
 
-        print("expecting numbers of logs: %s  result is: %s"%(str(numLogs),str(numLogs)))
-        print("expecting user usage: %s  result is: %s"%(str(usage),str(usageRes)))
+        usageRes2 = check_quota_db(uid2)
+        numLogsRes2 = check_log_db(uid2,"Rmdir")
 
-        assert usageRes==usage and numLogsRes==numLogs
+        print("User1 expecting numbers of logs: %s  result is: %s"%(str(numLogs1),str(numLogsRes1)))
+        print("User1 expecting user usage: %s  result is: %s"%(str(usage1),str(usageRes1)))
+        print("User2 expecting numbers of logs: %s  result is: %s"%(str(numLogs2),str(numLogsRes2)))
+        print("User2 expecting user usage: %s  result is: %s"%(str(usage2),str(usageRes2)))
+
+        test_done()
+        destroy_test_env()
+
+        assert usageRes1==usage1 and numLogsRes1==numLogs1 and usageRes2==usage2 and numLogsRes2==numLogs2
+
 
     
 
@@ -156,31 +247,29 @@ class TestClass:
     def test_utime(self):
         return 
 
-def check_log_db(self,uid,op=None):
+def check_log_db(uid,op=None):
     con = sqlite3.connect(dbName)
-    uid=os.getuid()
+    # uid=os.getuid()
     cur = con.cursor()
     if op:
-        cur.execute("select count(*) from Logs where UID=%s and Operation=%s"%(uid,op))
+        cur.execute("select count(*) from Logs where UID=%s and Operation='%s'"%(uid,op))
     else:
         cur.execute("select count(*) from Logs where UID=%s"%uid)
     res = cur.fetchall()
     con.close()
-    return res[0][0]
+    try:
+        return res[0][0]
+    except:
+        return 0
     
 
-def check_quota_db(self,uid):
+def check_quota_db(uid):
     con = sqlite3.connect(dbName)
-    uid=os.getuid()
     cur = con.cursor()
     cur.execute("select Usage from Quotas where UID=%s"%uid)
     res = cur.fetchall()
     con.close()
-    return res[0][0]  # return the usage of an user if valid
-
-
-# May use it for destroying the testing env
-def destroy_test_env():
-
-    pass
-
+    try:
+        return res[0][0]
+    except:
+        return 0  # return the usage of an user if valid
