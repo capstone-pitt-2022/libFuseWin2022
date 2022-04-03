@@ -235,7 +235,70 @@ class TestClass:
         return
 
     def test_chown(self):
-        return 
+        # only test changing the ownership of top level directory and file
+        init_test()
+        
+        testuser1 = oriUser
+        testuser2 = userList[1]
+
+        uid1 = get_uid_from_username(testuser1)
+        uid2 = get_uid_from_username(testuser2)
+        
+
+        cmd='''
+        whoami
+        cd %s
+        echo creating test folder and file...
+        mkdir testFolder
+        echo "test text" > testFile.txt
+        echo before chown
+        ls -l
+        '''%(mountName)
+
+        os.system(cmd)
+
+        usage1 = check_quota_db(uid1)
+        usage2 = check_quota_db(uid2)
+
+    
+        filePath = mountDir+"/testFile.txt"
+        folderPath = mountDir+"/testFolder"
+
+        fileSize = os.path.getsize(filePath)
+        folderSize = os.path.getsize(folderPath) 
+
+        fileSize = 4096 if fileSize<4096 else fileSize
+        folderSize = 4096 if folderSize<4096 else folderSize
+
+
+        print("switching to root user to execute chown....")
+        print("after chown: ")
+
+        cmd = '''
+        sudo umount %s
+        sudo runuser root << EOF
+        ntapfuse mount %s %s
+        cd %s
+        chown %s %s
+        chown %s %s
+        ls -l
+        '''%(mountName,baseDir,mountName,mountDir,testuser2,"testFile.txt",testuser2,"testFolder")
+
+        os.system(cmd)
+
+        usage1-= (fileSize+folderSize)
+        usage2+= (fileSize+folderSize)
+
+        logUsage1 = check_quota_db(uid1)
+        logUsage2 = check_quota_db(uid2)
+
+        print("User1 expecting user usage: %s  result is: %s"%(str(usage1),str(logUsage1)))
+        print("User2 expecting user usage: %s  result is: %s"%(str(usage2),str(logUsage2)))
+
+        test_done()
+        assert usage1==logUsage1 and usage2==logUsage2
+
+
     
     def test_truncate(self):
         # two case: greater than blocksize and smaller than blocksize
@@ -304,11 +367,7 @@ class TestClass:
 
         assert iniUsage1== logUsage1 and iniUsage2==logUsage2
 
-    def test_read(self):
-        return
-
-    def test_utime(self):
-        return 
+   
 
 def check_log_db(uid,op=None):
     con = sqlite3.connect(dbName)

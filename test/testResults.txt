@@ -21,7 +21,7 @@ Adding user `user999' to group `qizhe' ...
 Adding user user999 to group qizhe
 Done.
 creating some test users...
-collected 9 items
+collected 7 items
 
 test/ntapfuse_test.py::test_done removing all test files and folders...
 PASSED
@@ -49,7 +49,23 @@ removing all test files and folders...
 PASSED
 test/ntapfuse_test.py::TestClass::test_write PASSED
 test/ntapfuse_test.py::TestClass::test_unlink PASSED
-test/ntapfuse_test.py::TestClass::test_chown PASSED
+test/ntapfuse_test.py::TestClass::test_chown qizhe
+creating test folder and file...
+before chown
+total 8
+-rw-rw-r-- 1 qizhe qizhe   10 Apr  2 23:37 testFile.txt
+drwxrwxr-x 2 qizhe qizhe 4096 Apr  2 23:37 testFolder
+total 8
+-rw-rw-r-- 1 user888 qizhe   10 Apr  2 23:37 testFile.txt
+drwxrwxr-x 2 user888 qizhe 4096 Apr  2 23:37 testFolder
+
+creating basedir and mountpoint...
+switching to root user to execute chown....
+after chown: 
+User1 expecting user usage: 0  result is: 0
+User2 expecting user usage: 8192  result is: 8192
+removing all test files and folders...
+PASSED
 test/ntapfuse_test.py::TestClass::test_truncate 
 creating basedir and mountpoint...
 writing size is: 36000
@@ -58,7 +74,5 @@ switching to another user to create file and truncate....
 removing all test files and folders...
 deleting all test users...
 PASSED
-test/ntapfuse_test.py::TestClass::test_read PASSED
-test/ntapfuse_test.py::TestClass::test_utime PASSED
 
-============================== 9 passed in 8.81s ===============================
+============================== 7 passed in 26.58s ==============================
