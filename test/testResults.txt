@@ -53,11 +53,11 @@ test/ntapfuse_test.py::TestClass::test_chown qizhe
 creating test folder and file...
 before chown
 total 8
--rw-rw-r-- 1 qizhe qizhe   10 Apr  3 23:16 testFile.txt
-drwxrwxr-x 2 qizhe qizhe 4096 Apr  3 23:16 testFolder
+-rw-rw-r-- 1 qizhe qizhe   10 Apr  3 23:24 testFile.txt
+drwxrwxr-x 2 qizhe qizhe 4096 Apr  3 23:24 testFolder
 total 8
--rw-rw-r-- 1 user888 qizhe   10 Apr  3 23:16 testFile.txt
-drwxrwxr-x 2 user888 qizhe 4096 Apr  3 23:16 testFolder
+-rw-rw-r-- 1 user888 qizhe   10 Apr  3 23:24 testFile.txt
+drwxrwxr-x 2 user888 qizhe 4096 Apr  3 23:24 testFolder
 
 creating basedir and mountpoint...
 switching to root user to execute chown....
@@ -75,4 +75,4 @@ removing all test files and folders...
 deleting all test users...
 PASSED
 
-============================== 7 passed in 8.66s ===============================
+============================== 7 passed in 8.68s ===============================

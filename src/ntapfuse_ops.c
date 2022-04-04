@@ -118,21 +118,18 @@ ntapfuse_rmdir (const char *path)
     fullpath (path, fpath);
 
     int res;
+    
+    size_t size = getDirSize(fpath);
 
     res = rmdir (fpath);
 
-    size_t size = getDirSize(fpath);
-
-
     if(res < 0) {
         log_file_op("Rmdir",fpath,0,0, "Failed", -errno);
-    }else{
-        log_file_op("Rmdir",fpath,0,BLOCK_SIZE,"Success", 0);
+    }else {
+        log_file_op("Rmdir",fpath,size,size,"Success", 0);
     }    
 
     return res < 0 ? -errno : 0;
-
-  
 
 }
 
