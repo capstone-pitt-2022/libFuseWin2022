@@ -8,6 +8,7 @@ import regex
 import pytest
 import os
 import getpass
+import math
 
 
 # Note: that there is shell builtin command to interface with every syscall
@@ -233,6 +234,63 @@ class TestClass:
 
     def test_unlink(self):
         return
+        
+    def test_link(self):
+        init_test()
+
+        testuser1 = oriUser
+        testuser2 = userList[2]
+        uid1 = get_uid_from_username(testuser1)
+        uid2 = get_uid_from_username(testuser2)
+        usage1 = check_quota_db(uid1)
+        usage2 = check_quota_db(uid2)
+
+        testFile1 = "test1.txt"
+        testFile2 = "test2.txt"
+        linkFile1 = "test1link.txt"
+        linkFile2 = "test2link.txt"
+
+        testtext = "test truncate ...."*2000
+
+        cmd = '''
+        sudo umount %s
+        sudo runuser %s << EOF
+        ntapfuse mount %s %s
+        cd %s
+        echo %s > %s
+        ln %s %s
+        cd %s
+        '''%(mountName,testuser1,baseDir,mountName,mountDir,testtext,testFile1,testFile1,linkFile1,workDir)
+
+        os.system(cmd)
+        fsize = math.ceil(len(testtext)/4096)*4096
+        usage1 += fsize*2 if len(testtext)>blockSize else blockSize*2
+
+        cmd = '''
+        sudo umount %s
+        sudo runuser %s << EOF
+        ntapfuse mount %s %s
+        cd %s
+        echo %s > %s
+        ln %s %s
+        cd %s
+        '''%(mountName,testuser2,baseDir,mountName,mountDir,testtext,testFile2,testFile2,linkFile2,workDir)
+
+        os.system(cmd)
+
+
+        usage2 += fsize*2 if len(testtext)>blockSize else blockSize*2
+
+
+        logUsage1 = check_quota_db(uid1)
+        logUsage2 = check_quota_db(uid2)
+
+        print("User1 expecting user usage: %s  result is: %s"%(str(usage1),str(logUsage1)))
+        print("User2 expecting user usage: %s  result is: %s"%(str(usage2),str(logUsage2)))
+
+        test_done()
+
+        assert usage1==logUsage1 and usage2==logUsage2
 
     def test_chown(self):
         # only test changing the ownership of top level directory and file
