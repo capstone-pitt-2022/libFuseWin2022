@@ -301,7 +301,9 @@ class TestClass:
 
     
     def test_truncate(self):
-        # two case: greater than blocksize and smaller than blocksize
+        # truncate with a size that is smaller than original size
+        # truncate with a size that is larger than original size
+        # truncate with a size that is smaller than block size
 
         init_test()
 
@@ -313,13 +315,14 @@ class TestClass:
         uid1 = get_uid_from_username(testuser1)
         uid2 = get_uid_from_username(testuser2)
 
-        iniUsage1 = check_quota_db(uid1)
-        iniUsage2 = check_quota_db(uid2)
+        usage1 = check_quota_db(uid1)
+        usage2 = check_quota_db(uid2)
 
         testfile1 = "truncateTest1.txt"
         testfile2 = "truncateTest2.txt"
         truncateSize1 = 3000
         truncateSize2 =  10000
+        extremeSize = 100000000   # when truncate with this size, no usage change
         os.chdir("%s"%workDir)
         print("mounting and creating test files to truncate...")
         
@@ -330,9 +333,12 @@ class TestClass:
         cd %s
         echo %s > %s
         truncate -s %s %s
+        truncate -s %s %s
         cd %s
-        '''%(mountName,testuser1,baseDir,mountName,mountDir,testtext,testfile1,truncateSize1,testfile1,workDir)
+        '''%(mountName,testuser1,baseDir,mountName,mountDir,testtext,testfile1,truncateSize1,testfile1,extremeSize,testfile1,workDir)
         os.system(cmd)
+
+        orifilesize = len(testtext)
 
 
         print("switching to another user to create file and truncate....")
@@ -344,19 +350,39 @@ class TestClass:
         cd %s
         echo %s > %s
         truncate -s %s %s
+        truncate -s %s %s
         cd %s
         sudo umount %s
         sudo runuser %s << EOF
-        '''%(mountName,testuser2,baseDir,mountName,mountDir,testtext,testfile2,truncateSize2,testfile2,workDir,mountName,oriUser)
+        '''%(mountName,testuser2,baseDir,mountName,mountDir,testtext,testfile2,truncateSize2,testfile2,extremeSize,testfile2,workDir,mountName,oriUser)
 
 
         os.system(cmd)
 
-        truncateSize1 = blockSize if truncateSize1<blockSize else truncateSize1
-        truncateSize2 = blockSize if truncateSize2<blockSize else truncateSize2
+    
 
-        iniUsage1 += truncateSize1
-        iniUsage2 += truncateSize2
+        change1 = 0
+
+        if truncateSize1>orifilesize:
+            change1 = 0
+        else:
+            if truncateSize1 > blockSize:
+                change1 = truncateSize1 - orifilesize
+            else:
+                change1 = blockSize - orifilesize
+
+        change2 = 0
+
+        if truncateSize2>orifilesize:
+            change2 = 0
+        else:
+            if truncateSize2 > blockSize:
+                change2 = truncateSize2 - orifilesize
+            else:
+                change2 = blockSize - orifilesize
+
+        usage1 = usage1+orifilesize+change1
+        usage2 = usage2+orifilesize+change2
         logUsage1 = check_quota_db(uid1)
         logUsage2 = check_quota_db(uid2)
 
@@ -365,7 +391,7 @@ class TestClass:
         # for some reason, can't put this outside the testclass, will cause error
         destroy_test_env()
 
-        assert iniUsage1== logUsage1 and iniUsage2==logUsage2
+        assert usage1== logUsage1 and usage2==logUsage2
 
    
 
@@ -394,3 +420,4 @@ def check_quota_db(uid):
         return res[0][0]
     except:
         return 0  # return the usage of an user if valid
+
