@@ -1,17 +1,30 @@
 Below are the ops which will have an impact on the quota:
-	write 		--> int ntapfuse_write (const char *path, const char *buf, size_t size, off_t 				off, struct fuse_file_info *fi);
 
-	unlink 		--> int ntapfuse_unlink (const char *path);
+1.	Operation:  write 	
+	int ntapfuse_write (const char *path, const char *buf, size_t size, off_t off,struct fuse_file_info *fi);
+	Justification: Writes bytes to an already existing file which can potentially cause another data block to be allocated (file size surpasses intital data block     	 allocation due to write size), which will add to the user’s quota.  Or if the file doesn’t exist, a new file is created (a data block is allocated), which     	impacts the user quota, and following that allocation the bytes in write may cause the freshly allocated block to surpass the space providied, causing another 		datablock to be allocated, thus further impacting the user quota.
 
-	mkdir 		--> int ntapfuse_mkdir (const char *path, mode_t mode);
-
-	rmdir 		--> int ntapfuse_rmdir (const char *path);
-
-	truncate	--> int ntapfuse_truncate (const char *path, off_t off);
-
-	chown 		--> int ntapfuse_chown (const char *path, uid_t uid, gid_t gid);
-
-	link 		--> int ntapfuse_link (const char *src, const char *dst);
+2.	Operation:  unlink 
+	int ntapfuse_unlink (const char *path);
+	Justification: Deletes a name from the file system: iff the name was the last link to a file and no processes have the file open.  If these conditions hold, the 	 file will be deleted which will restore X bytes to the user’s quota (where x = the size in bytes of the freed file).
 	
-	symlink		--> int ntapfuse_symlink (const char *path, const char *link);
+3.  	Operation:  mkdir (make directory)
+	int ntapfuse_mkdir (const char *path, mode_t mode);
+	Justification: Creates a new directory which takes up disk space for the user calling the op, therefore impacting their quota.  
+
+4.	Operation:  rmdir (remove direcotry)
+	int ntapfuse_rmdir (const char *path);
+	Justification: Removes a directory which will restore X amount of bytes to the user’s quota (where x = the size in bytes of the freed directory)  
+
+5.	Operation: truncate 
+	int ntapfuse_truncate (const char *path, off_t off);
+	Justification: Wipes the contents of a given file, restoring X amount of bytes back to the user’s quota.
+
+6.	Operation: chown (change owner) 
+	int ntapfuse_chown (const char *path, uid_t uid, gid_t gid);
+	Justification: Modifies ownership of a given file or directory, upon calling this function a user’s ownership shifts, meaning they either gain/lose 			access to files and or directories, in both cases the quota will be impacted
+
+7.	Operation: link
+	int ntapfuse_link (const char *src, const char *dst);
+	Justification: associates a file with a filename in a fs.  i.e, creates a new file that is essentially “linked” to the origin file, which will impact the user 		quota by X bytes (where X= size of the origin file).
 
