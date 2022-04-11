@@ -199,7 +199,7 @@ ntapfuse_chown (const char *path, uid_t uid, gid_t gid)
         log_file_op ("Chown", fpath, fileSize, 0, "Failed", -errno);
         res = -1;
       } else {
-        stat (fpath, &info); //new owner of file
+        stat (fpath, &info); //new owner of file 
         printf ("New owner id %d group %d\n", info.st_uid, info.st_gid); //for verifying
 
         log_file_op ("Chown", fpath, fileSize, fileSize, "Success", 0); //update new owner quota
