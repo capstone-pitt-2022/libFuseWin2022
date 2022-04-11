@@ -3,6 +3,7 @@
  * Authors: Samuel Kenney <samuel.kenney48@gmail.com>
  *          August Sodora III <augsod@gmail.com>
  *          Carter S. Levinson <carter.levinson@pitt.edu>
+ *          Danny Yu <chy75@pitt.edu>
  * File: ntapfuse.c
  * License: GPLv3
  *
@@ -86,37 +87,35 @@ main (int argc, char *argv[])
   if (realpath (path, fpath) == NULL)
     perror ("main_realpath");
 
-  if (strcmp (command, "mount") == 0)
-    {
-      if (argc < 4)
-	usage ();
+  if (strcmp (command, "mount") == 0) {
+    if (argc < 4)
+	    usage ();
 
-      if (realpath (argv[2], base) == NULL)
-	perror ("main_realpath");
+    if (realpath (argv[2], base) == NULL)
+	    perror ("main_realpath");
 
-      int i = 1;
-      for (; i < argc; i++)
-	argv[i] = argv[i + 2];
-      argc -= 2;
+    for (int i = 1; i < argc; i++)
+	    argv[i] = argv[i + 2];
+    
+    argc -= 2;
 
-      /* open the database connection here */
-      int ret1 = open_db();
+    /* open the database connection here */
+    int ret1 = open_db ();
 
-      int ret2 = fuse_main (argc, argv, &ntapfuse_ops, base);
+    int ret2 = fuse_main (argc, argv, &ntapfuse_ops, base);
 
 
-      if (ret1 != 0) 
-        perror("sqlite3");
+    if (ret1 != 0) 
+      perror ("sqlite3");
 
-      if (ret2 < 0)
-	perror ("fuse_main");
+    if (ret2 < 0)
+	    perror ("fuse_main");
 
-      /* close database connection before returning */
-      close_db();
+    /* close database connection before returning */
+    close_db ();
 
-      return ret1 || ret2;
-    }
-  else
+    return ret1 || ret2;
+  } else
     usage ();
 
   return 0;

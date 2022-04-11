@@ -1,9 +1,10 @@
 /**
  * Project: ntapfuse
- * Author: Samuel Kenney <samuel.kenney48@gmail.com>
- *         August Sodora III <augsod@gmail.com>
- *         Qizhe Wang <qiw68@pitt.edu>
- *         Carter S. Levinson <carter.levinson@pitt.edu>
+ * Authors: Samuel Kenney <samuel.kenney48@gmail.com>
+ *          August Sodora III <augsod@gmail.com>
+ *          Qizhe Wang <qiw68@pitt.edu>
+ *          Carter S. Levinson <carter.levinson@pitt.edu>
+ *          Danny Yu <chy75@pitt.edu>
  * File: ntapfuse_ops.c
  * License: GPLv3
  *
@@ -36,12 +37,11 @@
 
 #include <sys/xattr.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sqlite3.h>
 
-
-/*global variable to track?*/
-int newfile=0;
-
+/* global variable to track */
+int newfile = 0;
 
 /**
  * Appends the path of the root filesystem to the given path, returning
@@ -50,17 +50,18 @@ int newfile=0;
 void
 fullpath (const char *path, char *buf)
 {
-  char *basedir = (char *) fuse_get_context ()->private_data;
+  char *basedir = (char *) fuse_get_context()->private_data;
 
   strcpy (buf, basedir);
   strcat (buf, path);
 }
 
 
-/* The following functions describe FUSE operations. Each operation appends
-   the path of the root filesystem to the given path in order to give the
-   mirrored path. */
-
+/** 
+ * The following functions describe FUSE operations. Each operation appends
+ * the path of the root filesystem to the given path in order to give the
+ * mirrored path. 
+ */
 int
 ntapfuse_getattr (const char *path, struct stat *buf)
 {
@@ -84,8 +85,7 @@ ntapfuse_mknod (const char *path, mode_t mode, dev_t dev)
 {
   char fpath[PATH_MAX];
   fullpath (path, fpath);
-  newfile=1;
-
+  newfile = 1;
 
   return mknod (fpath, mode, dev) ? -errno : 0;
 }
@@ -170,8 +170,44 @@ ntapfuse_chown (const char *path, uid_t uid, gid_t gid)
 {
   char fpath[PATH_MAX];
   fullpath (path, fpath);
+  long fileSize;
+  struct stat info;
+  int res = 0;
+  
+  FILE *f = fopen (fpath, "r");
+  if (f == NULL) {
+    perror ("Invalid file path");
+    log_file_op ("Chown", fpath, fileSize, 0, "Failed", -errno);
+    res = -1;
+  } else { 
+    fseek (f, 0, SEEK_END); 
+    fileSize = ftell (f); //get size of the file
+    fclose (f);
 
-  return chown (fpath, uid, gid) ? -errno : 0;
+    if (unlink (fpath) != 0) { //unlink file
+      perror ("Error unlinking file");
+      log_file_op ("Chown", fpath, fileSize, 0, "Failed", -errno);
+      res = -1;
+    } else {
+      stat (fpath, &info); //current owner of file
+      printf ("Original owner id %d group %d\n", info.st_uid, info.st_gid); //for verifying
+
+      log_file_op ("Unlink", fpath, fileSize, fileSize, "Success", 0); //update current owner quota
+      
+      if (chown (fpath, uid, gid) != 0) { //link new owner to file
+        perror ("Invalid user/group");
+        log_file_op ("Chown", fpath, fileSize, 0, "Failed", -errno);
+        res = -1;
+      } else {
+        stat (fpath, &info); //new owner of file
+        printf ("New owner id %d group %d\n", info.st_uid, info.st_gid); //for verifying
+
+        log_file_op ("Chown", fpath, fileSize, fileSize, "Success", 0); //update new owner quota
+      }
+    }
+  }
+
+  return res < 0 ? -errno : 0;
 }
 
 int
@@ -207,31 +243,28 @@ ntapfuse_open (const char *path, struct fuse_file_info *fi)
   return 0;
 }
 
-char* addquote(char* str){
-  char* newstr = calloc(1,strlen(str)+2);
-  *newstr='\'';
-  strcat(newstr,str);
+char*
+addquote (char* str)
+{
+  char* newstr = calloc (1, strlen(str) + 2);
+  *newstr = '\'';
+  strcat (newstr, str);
+
   char* t = "\'";
-  strcat(newstr,t);
+  strcat (newstr, t);
+
   return newstr;
 }
-
-
 
 int
 ntapfuse_read (const char *path, char *buf, size_t size, off_t off,
 	   struct fuse_file_info *fi)
 {
-
   char fpath[PATH_MAX];
   fullpath (path, fpath);
 
-  
-
   return pread (fi->fh, buf, size, off) < 0 ? -errno : size;
 }
-
-
 
 int
 ntapfuse_write (const char *path, const char *buf, size_t size, off_t off,
@@ -239,33 +272,33 @@ ntapfuse_write (const char *path, const char *buf, size_t size, off_t off,
 {
   char fpath[PATH_MAX];
   int res;
-  int initFileSize=0;
-  int usage=0;
+  int initFileSize = 0;
+  int usage = 0;
   FILE *f;
 
   fullpath (path, fpath);
 
-  if (newfile==1) { /* if file is new */
-      usage=size<BLOCK_SIZE?BLOCK_SIZE:size;
-      newfile=0;
+  if (newfile == 1) { /* if file is new */
+    usage = size < BLOCK_SIZE ? BLOCK_SIZE : size;
+    newfile = 0;
   } else {  /* if the file already exist */
-      f = fopen(fpath, "r");
-      fseek(f, 0, SEEK_END); 
-      initFileSize = ftell(f);
-      fclose(f);
+    f = fopen (fpath, "r");
+    fseek (f, 0, SEEK_END); 
+    initFileSize = ftell (f);
+    fclose (f);
       
-      if(initFileSize<BLOCK_SIZE) 
-              usage = initFileSize+size>BLOCK_SIZE?initFileSize+size-BLOCK_SIZE:0;
-      else 
-              usage = size;
+    if (initFileSize < BLOCK_SIZE) {
+      usage = initFileSize + size > BLOCK_SIZE ? initFileSize + size - BLOCK_SIZE : 0;
+    } else 
+      usage = size;
   }
 
   res = pwrite (fi->fh, buf, size, off);
 
-  if(res < 0) 
-          log_file_op("Write",fpath,size,0, "Failed", -errno);
+  if (res < 0) 
+    log_file_op ("Write", fpath, size, 0, "Failed", -errno);
   else 
-          log_file_op("Write",fpath,size,usage,"Success", 0);
+    log_file_op ("Write", fpath, size, usage, "Success", 0);
 
   return res < 0 ? -errno : size;
 }
@@ -296,7 +329,7 @@ ntapfuse_fsync (const char *path, int datasync, struct fuse_file_info *fi)
 
 int
 ntapfuse_setxattr (const char *path, const char *name, const char *value,
-	       size_t size, int flags)
+	    size_t size, int flags)
 {
   char fpath[PATH_MAX];
   fullpath (path, fpath);
@@ -349,20 +382,20 @@ ntapfuse_opendir (const char *path, struct fuse_file_info *fi)
 
 int
 ntapfuse_readdir (const char *path, void *buf, fuse_fill_dir_t fill, off_t off,
-	      struct fuse_file_info *fi)
+	    struct fuse_file_info *fi)
 {
   struct dirent *de = NULL;
 
-  while ((de = readdir ((DIR *) fi->fh)) != NULL)
-    {
-      struct stat st;
-      memset (&st, 0, sizeof (struct stat));
-      st.st_ino = de->d_ino;
-      st.st_mode = de->d_type << 12;
+  while ((de = readdir((DIR *) fi->fh)) != NULL)
+  {
+    struct stat st;
+    memset(&st, 0, sizeof(struct stat));
+    st.st_ino = de->d_ino;
+    st.st_mode = de->d_type << 12;
 
-      if (fill (buf, de->d_name, &st, 0))
-	break;
-    }
+    if (fill(buf, de->d_name, &st, 0))
+	    break;
+  }
 
   return 0;
 }
