@@ -1,11 +1,8 @@
 # ntapfuse unit testing version 0.1
 # code by @author Carter S. Levinson <carter.levinson@pitt.edu>
 from operator import sub
-import unittest
 import subprocess
 import sqlite3
-import regex
-import pytest
 import os
 import getpass
 import math
@@ -86,7 +83,7 @@ def init_test():
 # will be put at the end of each test; It removes all the test files and folders
 
 
-def test_done():
+def doneTest():
     print("removing all test files and folders...")
     cmd = '''
     cd %s
@@ -167,7 +164,7 @@ class TestClass:
         print("User2 expecting user usage: %s  result is: %s" %
               (str(usage2), str(usageRes2)))
 
-        test_done()
+        doneTest()
 
         assert usageRes1 == usage1 and numLogsRes1 == numLogs1 and usageRes2 == usage2 and numLogsRes2 == numLogs2
 
@@ -233,7 +230,7 @@ class TestClass:
         print("User2 expecting user usage: %s  result is: %s" %
               (str(usage2), str(usageRes2)))
 
-        test_done()
+        doneTest()
 
         assert usageRes1 == usage1 and numLogsRes1 == numLogs1 and usageRes2 == usage2 and numLogsRes2 == numLogs2
 
@@ -271,10 +268,11 @@ class TestClass:
 
         
         print("Gathering usage and log results")
+
         usageRes1 = check_quota_db(uid1)
         numLogsRes1 = check_log_db(uid1, "Write")
 
-        test_done()
+        doneTest()
         print("User1 expecting numbers of logs: %s  result is: %s" %
               (str(numLogs1), str(numLogsRes1)))
         print("User1 expecting user usage: %s  result is: %s" %
@@ -308,7 +306,7 @@ class TestClass:
         usageRes1 = check_quota_db(uid1)
         numLogsRes1 = check_log_db(uid1, "Unlink")
 
-        test_done()
+        doneTest()
         print("User1 expecting numbers of logs: %s  result is: %s" %
               (str(numLogs1), str(numLogsRes1)))
         print("User1 expecting user usage: %s  result is: %s" %
@@ -371,7 +369,7 @@ class TestClass:
         print("User2 expecting user usage: %s  result is: %s" %
               (str(usage2), str(logUsage2)))
 
-        test_done()
+        doneTest()
 
         assert usage1 == logUsage1 and usage2 == logUsage2
 
@@ -436,7 +434,7 @@ class TestClass:
         print("User2 expecting user usage: %s  result is: %s" %
               (str(usage2), str(logUsage2)))
 
-        test_done()
+        doneTest()
         assert usage1 == logUsage1 and usage2 == logUsage2
 
     def test_truncate(self):
@@ -534,7 +532,7 @@ class TestClass:
         print("User1 expecting user usage: %s  result is: %s"%(str(usage1),str(logUsage1)))
         print("User2 expecting user usage: %s  result is: %s"%(str(usage2),str(logUsage2)))
 
-        test_done()
+        doneTest()
 
         # for some reason, can't put this outside the testclass, will cause error
         destroy_test_env()
@@ -569,3 +567,4 @@ def check_quota_db(uid):
         return res[0][0]
     except:
         return 0  # return the usage of an user if valid
+
