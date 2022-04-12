@@ -80,7 +80,6 @@ main (int argc, char *argv[])
         usage ();
     }
         
-
     char *command = argv[1];
     char *path = argv[2];
 
@@ -88,7 +87,6 @@ main (int argc, char *argv[])
     if (realpath (path, fpath) == NULL) {
         perror ("main_realpath");
     }
-
 
     if (strcmp (command, "mount") == 0) {
         if (argc < 4){
@@ -99,7 +97,6 @@ main (int argc, char *argv[])
             perror ("main_realpath");
         }
     
-
         int i = 1;
         for (; i < argc; i++) {
             argv[i] = argv[i + 2];
@@ -117,12 +114,10 @@ main (int argc, char *argv[])
             perror("sqlite3");
         } 
 
-
         if (ret2 < 0) {
             perror ("fuse_main");
         }
     
-
         /* close database connection before returning */
         close_db();
 
@@ -131,8 +126,6 @@ main (int argc, char *argv[])
         usage ();
     }
     
-
-
     return 0;
 }
 

@@ -213,7 +213,6 @@ ntapfuse_open (const char *path, struct fuse_file_info *fi)
         return -errno;
     }
 
-
     fi->fh = fh;
 
     return 0;
@@ -270,9 +269,6 @@ ntapfuse_write (const char *path, const char *buf, size_t size, off_t off,
         }else{
             usage = size;
         }
-
-
-
     }
 
     res = pwrite (fi->fh, buf, size, off);
@@ -375,8 +371,7 @@ ntapfuse_readdir (const char *path, void *buf, fuse_fill_dir_t fill, off_t off,
         st.st_mode = de->d_type << 12;    
         if (fill (buf, de->d_name, &st, 0)) {
             break;
-        }
-        
+        } 
     }
 
     return 0;
