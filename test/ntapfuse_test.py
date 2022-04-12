@@ -457,8 +457,8 @@ class TestClass:
         usage1 = check_quota_db(uid1)
         usage2 = check_quota_db(uid2)
 
-        testfile1 = "truncateTest1.txt"
-        testfile2 = "truncateTest2.txt"
+        testfile1 = "test1.txt"
+        testfile2 = "test2.txt"
         truncateSize1 = 3000
         truncateSize2 = 10000
         extremeSize = 100000000  # when truncate with this size, no usage change
@@ -480,6 +480,10 @@ class TestClass:
         os.system(cmd)
 
         orifilesize = len(testtext)
+        if len(testtext)%blockSize==0:
+            orifilesize = len(testtext)
+        else:
+            orifilesize = math.ceil(len(testtext)/blockSize)*blockSize
 
         print("switching to another user to create file and truncate....")
 
@@ -520,10 +524,15 @@ class TestClass:
             else:
                 change2 = blockSize - orifilesize
 
-        usage1 = usage1 + orifilesize + change1
-        usage2 = usage2 + orifilesize + change2
+        usage1 = usage1+orifilesize+change1
+        usage1 = math.ceil(usage1/blockSize)*blockSize
+        usage2 = usage2+orifilesize+change2
+        usage2 = math.ceil(usage2/blockSize)*blockSize
         logUsage1 = check_quota_db(uid1)
         logUsage2 = check_quota_db(uid2)
+
+        print("User1 expecting user usage: %s  result is: %s"%(str(usage1),str(logUsage1)))
+        print("User2 expecting user usage: %s  result is: %s"%(str(usage2),str(logUsage2)))
 
         test_done()
 
