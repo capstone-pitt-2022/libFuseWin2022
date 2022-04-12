@@ -12,4 +12,5 @@ int open_db();
 void close_db(); 
 int log_file_op(char *, char *, size_t, size_t, char*, int );
 int getDirSize(char *);
+int getUsage();
 #endif /* DATABASE_H */
