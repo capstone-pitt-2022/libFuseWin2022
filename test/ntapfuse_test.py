@@ -42,11 +42,11 @@ def setup_test_env():
     print("creating some test users...")
 
     for user in userList:
-        cmd = '''
-        sudo useradd -p $(openssl passwd -1 password) %s
-        sudo adduser %s sudo
-        sudo adduser %s %s
-        ''' % (user, user, user, oriUser)
+        cmd = f'''
+        sudo useradd -p $(openssl passwd -1 password) {user}
+        sudo adduser {user} sudo
+        sudo adduser {user} {oriUser}
+        ''' 
         os.system(cmd)
 
 
@@ -66,16 +66,15 @@ def init_test():
 
     print("\ncreating basedir and mountpoint...")
     os.chdir("%s" % workDir)
-    cmd = '''
-    rm %s
-    mkdir %s   
-    mkdir %s
-    chmod ugo+rwx %s
-    chmod ugo+rwx %s
-    ntapfuse mount %s %s
-    chmod ugo+rwx %s
-    ''' % (dbName, mountName, baseDir, mountName, baseDir, baseDir, mountName,
-           dbName)
+    cmd = f'''
+    rm {dbName}
+    mkdir {mountName}   
+    mkdir {baseDir}
+    chmod ugo+rwx {mountName}
+    chmod ugo+rwx {baseDir}
+    ntapfuse mount {baseDir} {mountName}
+    chmod ugo+rwx {dbName}
+    ''' 
 
     os.system(cmd)
 
@@ -85,12 +84,12 @@ def init_test():
 
 def doneTest():
     print("removing all test files and folders...")
-    cmd = '''
-    cd %s
-    rm -r %s -f
-    sudo umount %s
-    rm -r %s -f
-    ''' % (workDir, baseDir, mountName, mountName)
+    cmd = f'''
+    cd {workDir}
+    rm -r {baseDir} -f
+    sudo umount {mountName}
+    rm -r {mountName} -f
+    '''
 
     os.system(cmd)
 
@@ -331,31 +330,29 @@ class TestClass:
 
         testtext = "test truncate ...." * 2000
 
-        cmd = '''
-        sudo umount %s
-        sudo runuser %s << EOF
-        ntapfuse mount %s %s
-        cd %s
-        echo %s > %s
-        ln %s %s
-        cd %s
-        ''' % (mountName, testuser1, baseDir, mountName, mountDir, testtext,
-               testFile1, testFile1, linkFile1, workDir)
+        cmd = f'''
+        sudo umount {mountName}
+        sudo runuser {testuser1} << EOF
+        ntapfuse mount {baseDir} {mountName}
+        cd {mountDir}
+        echo {testtext} > {testFile1}
+        ln {testFile1} {linkFile1}
+        cd {workDir}
+        ''' 
 
         os.system(cmd)
         fsize = math.ceil(len(testtext) / 4096) * 4096
         usage1 += fsize * 2 if len(testtext) > blockSize else blockSize * 2
 
-        cmd = '''
-        sudo umount %s
-        sudo runuser %s << EOF
-        ntapfuse mount %s %s
-        cd %s
-        echo %s > %s
-        ln %s %s
-        cd %s
-        ''' % (mountName, testuser2, baseDir, mountName, mountDir, testtext,
-               testFile2, testFile2, linkFile2, workDir)
+        cmd = f'''
+        sudo umount {mountName}
+        sudo runuser {testuser2} << EOF
+        ntapfuse mount {baseDir} {mountName}
+        cd {mountDir}
+        echo {testtext} > {testFile2}
+        ln {testFile2} {linkFile2}
+        cd {workDir}
+        ''' 
 
         os.system(cmd)
 
@@ -383,15 +380,15 @@ class TestClass:
         uid1 = get_uid_from_username(testuser1)
         uid2 = get_uid_from_username(testuser2)
 
-        cmd = '''
+        cmd = f'''
         whoami
-        cd %s
+        cd {mountName}
         echo creating test folder and file...
         mkdir testFolder
         echo "test text" > testFile.txt
         echo before chown
         ls -l
-        ''' % (mountName)
+        '''
 
         os.system(cmd)
 
@@ -410,16 +407,15 @@ class TestClass:
         print("switching to root user to execute chown....")
         print("after chown: ")
 
-        cmd = '''
-        sudo umount %s
+        cmd = f'''
+        sudo umount {mountName}
         sudo runuser root << EOF
-        ntapfuse mount %s %s
-        cd %s
-        chown %s %s
-        chown %s %s
+        ntapfuse mount {baseDir} {mountName}
+        cd {mountDir}
+        chown {testuser2} testFile.txt
+        chown {testuser2} testFolder
         ls -l
-        ''' % (mountName, baseDir, mountName, mountDir, testuser2,
-               "testFile.txt", testuser2, "testFolder")
+        '''
 
         os.system(cmd)
 
@@ -463,18 +459,16 @@ class TestClass:
         os.chdir("%s" % workDir)
         print("mounting and creating test files to truncate...")
 
-        cmd = '''
-        sudo umount %s
-        sudo runuser %s << EOF
-        ntapfuse mount %s %s
-        cd %s
-        echo %s > %s
-        truncate -s %s %s
-        truncate -s %s %s
-        cd %s
-        ''' % (mountName, testuser1, baseDir, mountName, mountDir, testtext,
-               testfile1, truncateSize1, testfile1, extremeSize, testfile1,
-               workDir)
+        cmd = f'''
+        sudo umount {mountName}
+        sudo runuser {testuser1} << EOF
+        ntapfuse mount {baseDir} {mountName}
+        cd {mountDir}
+        echo {testtext} > {testfile1}
+        truncate -s {truncateSize1} {testfile1}
+        truncate -s {extremeSize} {testfile1}
+        cd {workDir}
+        ''' 
         os.system(cmd)
 
         orifilesize = len(testtext)
@@ -485,20 +479,18 @@ class TestClass:
 
         print("switching to another user to create file and truncate....")
 
-        cmd = '''
-        sudo umount %s
-        sudo runuser %s << EOF
-        ntapfuse mount %s %s
-        cd %s
-        echo %s > %s
-        truncate -s %s %s
-        truncate -s %s %s
-        cd %s
-        sudo umount %s
-        sudo runuser %s << EOF
-        ''' % (mountName, testuser2, baseDir, mountName, mountDir, testtext,
-               testfile2, truncateSize2, testfile2, extremeSize, testfile2,
-               workDir, mountName, oriUser)
+        cmd = f'''
+        sudo umount {mountName}
+        sudo runuser {testuser2} << EOF
+        ntapfuse mount {baseDir} {mountName}
+        cd {mountDir}
+        echo {testtext} > {testfile2}
+        truncate -s {truncateSize2} {testfile2}
+        truncate -s {extremeSize} {testfile2}
+        cd {workDir}
+        sudo umount {mountName}
+        sudo runuser {oriUser} << EOF
+        ''' 
 
         os.system(cmd)
 

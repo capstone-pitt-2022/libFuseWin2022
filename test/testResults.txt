@@ -87,11 +87,11 @@ test/ntapfuse_test.py::TestClass::test_chown qizhe
 creating test folder and file...
 before chown
 total 8
--rw-rw-r-- 1 qizhe qizhe   10 Apr 11 23:28 testFile.txt
-drwxrwxr-x 2 qizhe qizhe 4096 Apr 11 23:28 testFolder
+-rw-rw-r-- 1 qizhe qizhe   10 Apr 11 23:53 testFile.txt
+drwxrwxr-x 2 qizhe qizhe 4096 Apr 11 23:53 testFolder
 total 8
--rw-rw-r-- 1 user888 qizhe   10 Apr 11 23:28 testFile.txt
-drwxrwxr-x 2 user888 qizhe 4096 Apr 11 23:28 testFolder
+-rw-rw-r-- 1 user888 qizhe   10 Apr 11 23:53 testFile.txt
+drwxrwxr-x 2 user888 qizhe 4096 Apr 11 23:53 testFolder
 
 creating basedir and mountpoint...
 switching to root user to execute chown....
@@ -114,7 +114,7 @@ FAILED
 =================================== FAILURES ===================================
 ____________________________ TestClass.test_unlink _____________________________
 
-self = <ntapfuse_test.TestClass object at 0x7fd2004c5be0>
+self = <ntapfuse_test.TestClass object at 0x7fbbd9c92af0>
 
     def test_unlink(self):
         init_test()
@@ -156,10 +156,10 @@ E         -0 and 8 == 0
 E         +8
 E         -0)
 
-test/ntapfuse_test.py:315: AssertionError
+test/ntapfuse_test.py:314: AssertionError
 _____________________________ TestClass.test_link ______________________________
 
-self = <ntapfuse_test.TestClass object at 0x7fd2002f7cd0>
+self = <ntapfuse_test.TestClass object at 0x7fbbd9cb0af0>
 
     def test_link(self):
         init_test()
@@ -178,31 +178,29 @@ self = <ntapfuse_test.TestClass object at 0x7fd2002f7cd0>
     
         testtext = "test truncate ...." * 2000
     
-        cmd = '''
-        sudo umount %s
-        sudo runuser %s << EOF
-        ntapfuse mount %s %s
-        cd %s
-        echo %s > %s
-        ln %s %s
-        cd %s
-        ''' % (mountName, testuser1, baseDir, mountName, mountDir, testtext,
-               testFile1, testFile1, linkFile1, workDir)
+        cmd = f'''
+        sudo umount {mountName}
+        sudo runuser {testuser1} << EOF
+        ntapfuse mount {baseDir} {mountName}
+        cd {mountDir}
+        echo {testtext} > {testFile1}
+        ln {testFile1} {linkFile1}
+        cd {workDir}
+        '''
     
         os.system(cmd)
         fsize = math.ceil(len(testtext) / 4096) * 4096
         usage1 += fsize * 2 if len(testtext) > blockSize else blockSize * 2
     
-        cmd = '''
-        sudo umount %s
-        sudo runuser %s << EOF
-        ntapfuse mount %s %s
-        cd %s
-        echo %s > %s
-        ln %s %s
-        cd %s
-        ''' % (mountName, testuser2, baseDir, mountName, mountDir, testtext,
-               testFile2, testFile2, linkFile2, workDir)
+        cmd = f'''
+        sudo umount {mountName}
+        sudo runuser {testuser2} << EOF
+        ntapfuse mount {baseDir} {mountName}
+        cd {mountDir}
+        echo {testtext} > {testFile2}
+        ln {testFile2} {linkFile2}
+        cd {workDir}
+        '''
     
         os.system(cmd)
     
@@ -223,10 +221,10 @@ E       assert (73728 == 36001
 E         +73728
 E         -36001)
 
-test/ntapfuse_test.py:374: AssertionError
+test/ntapfuse_test.py:371: AssertionError
 _____________________________ TestClass.test_chown _____________________________
 
-self = <ntapfuse_test.TestClass object at 0x7fd2004c53a0>
+self = <ntapfuse_test.TestClass object at 0x7fbbd9bf0a90>
 
     def test_chown(self):
         # only test changing the ownership of top level directory and file
@@ -238,15 +236,15 @@ self = <ntapfuse_test.TestClass object at 0x7fd2004c53a0>
         uid1 = get_uid_from_username(testuser1)
         uid2 = get_uid_from_username(testuser2)
     
-        cmd = '''
+        cmd = f'''
         whoami
-        cd %s
+        cd {mountName}
         echo creating test folder and file...
         mkdir testFolder
         echo "test text" > testFile.txt
         echo before chown
         ls -l
-        ''' % (mountName)
+        '''
     
         os.system(cmd)
     
@@ -265,16 +263,15 @@ self = <ntapfuse_test.TestClass object at 0x7fd2004c53a0>
         print("switching to root user to execute chown....")
         print("after chown: ")
     
-        cmd = '''
-        sudo umount %s
+        cmd = f'''
+        sudo umount {mountName}
         sudo runuser root << EOF
-        ntapfuse mount %s %s
-        cd %s
-        chown %s %s
-        chown %s %s
+        ntapfuse mount {baseDir} {mountName}
+        cd {mountDir}
+        chown {testuser2} testFile.txt
+        chown {testuser2} testFolder
         ls -l
-        ''' % (mountName, baseDir, mountName, mountDir, testuser2,
-               "testFile.txt", testuser2, "testFolder")
+        '''
     
         os.system(cmd)
     
@@ -295,10 +292,10 @@ E       assert (0 == 8192
 E         +0
 E         -8192)
 
-test/ntapfuse_test.py:438: AssertionError
+test/ntapfuse_test.py:434: AssertionError
 ___________________________ TestClass.test_truncate ____________________________
 
-self = <ntapfuse_test.TestClass object at 0x7fd2002c7c70>
+self = <ntapfuse_test.TestClass object at 0x7fbbd9c97370>
 
     def test_truncate(self):
         # truncate with a size that is smaller than original size
@@ -326,18 +323,16 @@ self = <ntapfuse_test.TestClass object at 0x7fd2002c7c70>
         os.chdir("%s" % workDir)
         print("mounting and creating test files to truncate...")
     
-        cmd = '''
-        sudo umount %s
-        sudo runuser %s << EOF
-        ntapfuse mount %s %s
-        cd %s
-        echo %s > %s
-        truncate -s %s %s
-        truncate -s %s %s
-        cd %s
-        ''' % (mountName, testuser1, baseDir, mountName, mountDir, testtext,
-               testfile1, truncateSize1, testfile1, extremeSize, testfile1,
-               workDir)
+        cmd = f'''
+        sudo umount {mountName}
+        sudo runuser {testuser1} << EOF
+        ntapfuse mount {baseDir} {mountName}
+        cd {mountDir}
+        echo {testtext} > {testfile1}
+        truncate -s {truncateSize1} {testfile1}
+        truncate -s {extremeSize} {testfile1}
+        cd {workDir}
+        '''
         os.system(cmd)
     
         orifilesize = len(testtext)
@@ -348,20 +343,18 @@ self = <ntapfuse_test.TestClass object at 0x7fd2002c7c70>
     
         print("switching to another user to create file and truncate....")
     
-        cmd = '''
-        sudo umount %s
-        sudo runuser %s << EOF
-        ntapfuse mount %s %s
-        cd %s
-        echo %s > %s
-        truncate -s %s %s
-        truncate -s %s %s
-        cd %s
-        sudo umount %s
-        sudo runuser %s << EOF
-        ''' % (mountName, testuser2, baseDir, mountName, mountDir, testtext,
-               testfile2, truncateSize2, testfile2, extremeSize, testfile2,
-               workDir, mountName, oriUser)
+        cmd = f'''
+        sudo umount {mountName}
+        sudo runuser {testuser2} << EOF
+        ntapfuse mount {baseDir} {mountName}
+        cd {mountDir}
+        echo {testtext} > {testfile2}
+        truncate -s {truncateSize2} {testfile2}
+        truncate -s {extremeSize} {testfile2}
+        cd {workDir}
+        sudo umount {mountName}
+        sudo runuser {oriUser} << EOF
+        '''
     
         os.system(cmd)
     
@@ -405,10 +398,10 @@ E       assert (4096 == 36001
 E         +4096
 E         -36001)
 
-test/ntapfuse_test.py:540: AssertionError
+test/ntapfuse_test.py:532: AssertionError
 =========================== short test summary info ============================
 FAILED test/ntapfuse_test.py::TestClass::test_unlink - assert (0 == 0
 FAILED test/ntapfuse_test.py::TestClass::test_link - assert (73728 == 36001
 FAILED test/ntapfuse_test.py::TestClass::test_chown - assert (0 == 8192
 FAILED test/ntapfuse_test.py::TestClass::test_truncate - assert (4096 == 36001
-========================= 4 failed, 3 passed in 11.29s =========================
+========================= 4 failed, 3 passed in 10.41s =========================
