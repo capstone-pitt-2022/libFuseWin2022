@@ -1,9 +1,10 @@
 /**
  * Project: ntapfuse
- * Author: Samuel Kenney <samuel.kenney48@gmail.com>
- *         August Sodora III <augsod@gmail.com>
- *         Qizhe Wang <qiw68@pitt.edu>
- *         Carter S. Levinson <carter.levinson@pitt.edu>
+ * Authors: Samuel Kenney <samuel.kenney48@gmail.com>
+ *          August Sodora III <augsod@gmail.com>
+ *          Qizhe Wang <qiw68@pitt.edu>
+ *          Carter S. Levinson <carter.levinson@pitt.edu>
+ *          Danny Yu <chy75@pitt.edu>
  * File: ntapfuse_ops.c
  * License: GPLv3
  *
@@ -36,12 +37,11 @@
 
 #include <sys/xattr.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sqlite3.h>
 
-
-/*global variable to track?*/
-int newfile=0;
-
+/* global variable to track */
+int newfile = 0;
 
 /**
  * Appends the path of the root filesystem to the given path, returning
@@ -56,10 +56,11 @@ fullpath (const char *path, char *buf)
 }
 
 
-/* The following functions describe FUSE operations. Each operation appends
-   the path of the root filesystem to the given path in order to give the
-   mirrored path. */
-
+/** 
+ * The following functions describe FUSE operations. Each operation appends
+ * the path of the root filesystem to the given path in order to give the
+ * mirrored path. 
+ */
 int
 ntapfuse_getattr (const char *path, struct stat *buf)
 {
@@ -81,8 +82,9 @@ ntapfuse_mknod (const char *path, mode_t mode, dev_t dev)
 {
     char fpath[PATH_MAX];
     fullpath (path, fpath);
-    newfile=1;  
+    newfile = 1;  
     return mknod (fpath, mode, dev) ? -errno : 0;
+
 }
 
 int
@@ -181,6 +183,7 @@ ntapfuse_chmod (const char *path, mode_t mode)
 int
 ntapfuse_chown (const char *path, uid_t uid, gid_t gid)
 {
+
     char fpath[PATH_MAX];
     fullpath (path, fpath);
 
@@ -222,7 +225,10 @@ ntapfuse_open (const char *path, struct fuse_file_info *fi)
     return 0;
 }
 
-char* addquote(char* str) {
+
+char* 
+addquote(char* str) 
+{
     char* newstr = calloc(1,strlen(str)+2);
     *newstr='\'';
     strcat(newstr,str);
@@ -230,8 +236,6 @@ char* addquote(char* str) {
     strcat(newstr,t);
     return newstr;
 }
-
-
 
 int
 ntapfuse_read (const char *path, char *buf, size_t size, off_t off,
@@ -243,8 +247,6 @@ ntapfuse_read (const char *path, char *buf, size_t size, off_t off,
 
     return pread (fi->fh, buf, size, off) < 0 ? -errno : size;
 }
-
-
 
 int
 ntapfuse_write (const char *path, const char *buf, size_t size, off_t off,
@@ -273,8 +275,6 @@ ntapfuse_write (const char *path, const char *buf, size_t size, off_t off,
         }else{
             usage = size;
         }
-
-
 
     }
 
@@ -315,7 +315,7 @@ ntapfuse_fsync (const char *path, int datasync, struct fuse_file_info *fi)
 
 int
 ntapfuse_setxattr (const char *path, const char *name, const char *value,
-	       size_t size, int flags)
+	    size_t size, int flags)
 {
     char fpath[PATH_MAX];
     fullpath (path, fpath);
@@ -367,7 +367,7 @@ ntapfuse_opendir (const char *path, struct fuse_file_info *fi)
 
 int
 ntapfuse_readdir (const char *path, void *buf, fuse_fill_dir_t fill, off_t off,
-	      struct fuse_file_info *fi)
+	    struct fuse_file_info *fi)
 {
     struct dirent *de = NULL;
 
@@ -381,7 +381,6 @@ ntapfuse_readdir (const char *path, void *buf, fuse_fill_dir_t fill, off_t off,
         }
         
     }
-
     return 0;
 }
 
