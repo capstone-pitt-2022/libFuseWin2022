@@ -59,7 +59,15 @@ ntapfuse requires a base directory to be mirroed and a mount point:
   $ ntapfuse mount <base> <mount>
 ```
 
-ntapfuse should be unmounted using the fusermount command:
+if you want to allow multiple users for the FUSE session and have set the 
+option as described above, run:
+
+```bash
+  $ ntapfuse mount <base> <mount> -o allow_other
+```
+
+ntapfuse should be unmounted using the fusermount command to avoid transport
+socket errors, like so:
 
 ```bash
   $ fusermount -u <mount>
