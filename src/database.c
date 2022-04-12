@@ -201,9 +201,9 @@ int getDirSize(char* dirPath)
     int size;
     char sizeChar[100];
     char dir[100];
-	char res[100];
+    char res[100];
     char commandBuf[100];
-	char *command = "du -s %s";
+    char *command = "du -s %s";
 
     sprintf(commandBuf,command,dirPath);
 	fp = popen(commandBuf,"r");
