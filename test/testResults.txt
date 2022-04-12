@@ -1,0 +1,120 @@
+============================= test session starts ==============================
+platform linux -- Python 3.9.7, pytest-6.0.2, py-1.10.0, pluggy-0.13.0 -- /usr/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/qizhe/Desktop/libfuse/libFuseWin2022
+collecting ... creating basedir and mountpoint...
+collected 8 items
+
+test/ntapfuse_test.py::TestClass::test_mkdir Testing mkdir...
+creating some empty folders
+checking if usage and logs match...
+expecting numbers of logs: 30  result is: 30
+expecting user usage: 122880  result is: 122880
+PASSED
+test/ntapfuse_test.py::TestClass::test_rmdir Testing rmdir...
+deleting some empty folders that mkdir create
+checking if usage and logs match...
+expecting numbers of logs: 40  result is: 40
+expecting user usage: 81920  result is: 81920
+PASSED
+test/ntapfuse_test.py::TestClass::test_write PASSED
+test/ntapfuse_test.py::TestClass::test_unlink PASSED
+test/ntapfuse_test.py::TestClass::test_chown PASSED
+test/ntapfuse_test.py::TestClass::test_truncate PASSED
+test/ntapfuse_test.py::TestClass::test_read PASSED
+test/ntapfuse_test.py::TestClass::test_utime PASSED
+
+============================== 8 passed in 0.91s ===============================
+============================= test session starts ==============================
+platform linux -- Python 3.9.7, pytest-6.0.2, py-1.10.0, pluggy-0.13.0 -- /usr/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/qizhe/Desktop/forPushing/libFuseWin2022
+collecting ... Making install in src
+make[1]: Entering directory '/home/qizhe/Desktop/forPushing/libFuseWin2022/src'
+make[2]: Entering directory '/home/qizhe/Desktop/forPushing/libFuseWin2022/src'
+ /usr/bin/mkdir -p '/usr/local/bin'
+  /usr/bin/install -c ntapfuse '/usr/local/bin'
+make[2]: Nothing to be done for 'install-data-am'.
+make[2]: Leaving directory '/home/qizhe/Desktop/forPushing/libFuseWin2022/src'
+make[1]: Leaving directory '/home/qizhe/Desktop/forPushing/libFuseWin2022/src'
+make[1]: Entering directory '/home/qizhe/Desktop/forPushing/libFuseWin2022'
+make[2]: Entering directory '/home/qizhe/Desktop/forPushing/libFuseWin2022'
+make[2]: Nothing to be done for 'install-exec-am'.
+ /usr/bin/mkdir -p '/usr/local/share/doc/ntapfuse'
+ /usr/bin/install -c -m 644 README.md '/usr/local/share/doc/ntapfuse'
+make[2]: Leaving directory '/home/qizhe/Desktop/forPushing/libFuseWin2022'
+make[1]: Leaving directory '/home/qizhe/Desktop/forPushing/libFuseWin2022'
+Adding user `user666' to group `sudo' ...
+Adding user user666 to group sudo
+Done.
+Adding user `user666' to group `qizhe' ...
+Adding user user666 to group qizhe
+Done.
+Adding user `user888' to group `sudo' ...
+Adding user user888 to group sudo
+Done.
+Adding user `user888' to group `qizhe' ...
+Adding user user888 to group qizhe
+Done.
+Adding user `user999' to group `sudo' ...
+Adding user user999 to group sudo
+Done.
+Adding user `user999' to group `qizhe' ...
+Adding user user999 to group qizhe
+Done.
+creating some test users...
+collected 7 items
+
+test/ntapfuse_test.py::test_done removing all test files and folders...
+PASSED
+test/ntapfuse_test.py::TestClass::test_mkdir 
+creating basedir and mountpoint...
+Testing mkdir...
+creating some empty folders for current user...
+switching to another user and create some empty folders
+User1 expecting numbers of logs: 22  result is: 22
+User1 expecting user usage: 90112  result is: 90112
+User2 expecting numbers of logs: 20  result is: 20
+User2 expecting user usage: 81920  result is: 81920
+removing all test files and folders...
+PASSED
+test/ntapfuse_test.py::TestClass::test_rmdir 
+creating basedir and mountpoint...
+Testing rmdir...
+creating some folders and then delete some of them...
+switch to another user to do the same stuff...
+User1 expecting numbers of logs: 18  result is: 18
+User1 expecting user usage: 73728  result is: 73728
+User2 expecting numbers of logs: 20  result is: 20
+User2 expecting user usage: 81920  result is: 81920
+removing all test files and folders...
+PASSED
+test/ntapfuse_test.py::TestClass::test_write PASSED
+test/ntapfuse_test.py::TestClass::test_unlink PASSED
+test/ntapfuse_test.py::TestClass::test_chown qizhe
+creating test folder and file...
+before chown
+total 8
+-rw-rw-r-- 1 qizhe qizhe   10 Apr  5 08:25 testFile.txt
+drwxrwxr-x 2 qizhe qizhe 4096 Apr  5 08:25 testFolder
+total 8
+-rw-rw-r-- 1 user888 qizhe   10 Apr  5 08:25 testFile.txt
+drwxrwxr-x 2 user888 qizhe 4096 Apr  5 08:25 testFolder
+
+creating basedir and mountpoint...
+switching to root user to execute chown....
+after chown: 
+User1 expecting user usage: 0  result is: 0
+User2 expecting user usage: 8192  result is: 8192
+removing all test files and folders...
+PASSED
+test/ntapfuse_test.py::TestClass::test_truncate 
+creating basedir and mountpoint...
+writing size is: 36000
+mounting and creating test files to truncate...
+switching to another user to create file and truncate....
+removing all test files and folders...
+deleting all test users...
+PASSED
+
+============================== 7 passed in 9.88s ===============================

@@ -3,7 +3,6 @@
  * Authors: Samuel Kenney <samuel.kenney48@gmail.com>
  *          August Sodora III <augsod@gmail.com>
  *          Carter S. Levinson <carter.levinson@pitt.edu>
- *          Danny Yu <chy75@pitt.edu>
  * File: ntapfuse.c
  * License: GPLv3
  *
@@ -92,7 +91,7 @@ main (int argc, char *argv[])
 
 
     if (strcmp (command, "mount") == 0) {
-        if (argc < 4) {
+        if (argc < 4){
             usage ();
         }
 
@@ -113,14 +112,17 @@ main (int argc, char *argv[])
 
         int ret2 = fuse_main (argc, argv, &ntapfuse_ops, base);
 
+
         if (ret1 != 0) {
             perror("sqlite3");
         } 
+
 
         if (ret2 < 0) {
             perror ("fuse_main");
         }
     
+
         /* close database connection before returning */
         close_db();
 
@@ -129,6 +131,8 @@ main (int argc, char *argv[])
         usage ();
     }
     
+
+
     return 0;
 }
 
