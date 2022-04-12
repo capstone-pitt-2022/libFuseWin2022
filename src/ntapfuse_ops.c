@@ -183,11 +183,48 @@ ntapfuse_chmod (const char *path, mode_t mode)
 int
 ntapfuse_chown (const char *path, uid_t uid, gid_t gid)
 {
-
     char fpath[PATH_MAX];
     fullpath (path, fpath);
+    long fileSize;
+    struct stat info;
+    int res = 0;
 
-    return chown (fpath, uid, gid) ? -errno : 0;
+    FILE *f = fopen (fpath, "r");
+    if (f == NULL) {
+        perror ("Invalid file path");
+        log_file_op ("Chown", fpath, 0, 0, "Failed", -errno);
+        res = -1;
+    } else { 
+        fseek (f, 0, SEEK_END); 
+        fileSize = ftell (f); //get size of the file
+        fclose (f);
+
+        if (unlink (fpath) != 0) { //unlink file
+            perror ("Error unlinking file");
+            log_file_op ("Chown", fpath, fileSize, 0, "Failed", -errno);
+            res = -1;
+        } else {
+            stat (fpath, &info); //current owner of file for verifying
+            printf ("Original owner id %d group %d\n", info.st_uid, info.st_gid); //for verifying
+
+            //unlink as a part of chown operation
+            log_file_op ("Unlink", fpath, fileSize, fileSize, "Success", 0); //update current owner quota
+
+            if (chown (fpath, uid, gid) != 0) { //link new owner to file
+                perror ("Invalid user/group");
+                log_file_op ("Chown", fpath, fileSize, 0, "Failed", -errno);
+                res = -1;
+            } else {
+                stat (fpath, &info); //new owner of file for verifying 
+                printf ("New owner id %d group %d\n", info.st_uid, info.st_gid); //for verifying
+
+                //actual chown to new owner
+                log_file_op ("Chown", fpath, fileSize, fileSize, "Success", 0); //update new owner quota
+            }
+        }
+    }
+
+    return res < 0 ? -errno : 0;
 }
 
 int
