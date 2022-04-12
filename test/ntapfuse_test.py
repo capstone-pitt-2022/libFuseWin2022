@@ -241,13 +241,9 @@ class TestClass:
         init_test()
 
         testuser1 = oriUser
-        testuser2 = userList[1]
         uid1 = get_uid_from_username(testuser1)
-        uid2 = get_uid_from_username(testuser2)
-        numLogs1 = check_log_db(uid1, "Mkdir")
-        numLogs2 = check_log_db(uid2, "Mkdir")
+        numLogs1 = check_log_db(uid1, "Write")
         usage1 = check_quota_db(uid1)
-        usage2 = check_quota_db(uid2)
 
         print("Writing some files as original user")
         with open('mountPoint/test1.txt', 'w') as testfile:
@@ -273,21 +269,7 @@ class TestClass:
                 numLogs1 += 1
                 usage1 += blockSize
 
-        with open('mountPoint/test4.txt', 'w') as testfile:
-            result = subprocess.run(["cat", 'test1.txt', 'test2.txt'],
-                                    stdout=testfile)
-            retcode = result.returncode
-            if retcode == OK:
-                numLogs1 += 1
-                usage1 += blockSize
-
-        with open('mountPoint/test5.txt', 'w') as testfile:
-            result = subprocess.run(["cat", 'test4.txt', 'test3.txt'],
-                                    stdout=testfile)
-            retcode = result.returncode
-            if retcode == OK:
-                numLogs1 += 1
-                usage1 += blockSize
+        
         print("Gathering usage and log results")
         usageRes1 = check_quota_db(uid1)
         numLogsRes1 = check_log_db(uid1, "Write")
@@ -303,13 +285,9 @@ class TestClass:
         init_test()
 
         testuser1 = oriUser
-        testuser2 = userList[1]
         uid1 = get_uid_from_username(testuser1)
-        uid2 = get_uid_from_username(testuser2)
-        numLogs1 = check_log_db(uid1, "Mkdir")
-        numLogs2 = check_log_db(uid2, "Mkdir")
+        numLogs1 = check_log_db(uid1, "Unlink")
         usage1 = check_quota_db(uid1)
-        usage2 = check_quota_db(uid2)
         cmd = '''
         touch %s 
         '''
@@ -328,7 +306,7 @@ class TestClass:
 
         print("Gathering usage data")
         usageRes1 = check_quota_db(uid1)
-        numLogsRes1 = check_log_db(uid1, "Write")
+        numLogsRes1 = check_log_db(uid1, "Unlink")
 
         test_done()
         print("User1 expecting numbers of logs: %s  result is: %s" %
