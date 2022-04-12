@@ -50,10 +50,9 @@ int newfile = 0;
 void
 fullpath (const char *path, char *buf)
 {
-  char *basedir = (char *) fuse_get_context()->private_data;
-
-  strcpy (buf, basedir);
-  strcat (buf, path);
+    char *basedir = (char *) fuse_get_context ()->private_data; 
+    strcpy (buf, basedir);
+    strcat (buf, path);
 }
 
 
@@ -65,358 +64,344 @@ fullpath (const char *path, char *buf)
 int
 ntapfuse_getattr (const char *path, struct stat *buf)
 {
-  char fpath[PATH_MAX];
-  fullpath (path, fpath);
-
-  return lstat (fpath, buf) ? -errno : 0;
+    char fpath[PATH_MAX];
+    fullpath (path, fpath); 
+    return lstat (fpath, buf) ? -errno : 0;
 }
 
 int
 ntapfuse_readlink (const char *path, char *target, size_t size)
 {
-  char fpath[PATH_MAX];
-  fullpath (path, fpath);
-
-  return readlink (fpath, target, size) < 0 ? -errno : 0;
+    char fpath[PATH_MAX];
+    fullpath (path, fpath); 
+    return readlink (fpath, target, size) < 0 ? -errno : 0;
 }
 
 int
 ntapfuse_mknod (const char *path, mode_t mode, dev_t dev)
 {
-  char fpath[PATH_MAX];
-  fullpath (path, fpath);
-  newfile = 1;
+    char fpath[PATH_MAX];
+    fullpath (path, fpath);
+    newfile = 1;  
+    return mknod (fpath, mode, dev) ? -errno : 0;
 
-  return mknod (fpath, mode, dev) ? -errno : 0;
 }
 
 int
 ntapfuse_mkdir (const char *path, mode_t mode)
 {
-  char fpath[PATH_MAX];
-  fullpath (path, fpath);
+    char fpath[PATH_MAX];
+    fullpath (path, fpath); 
+    int res;
+    res = mkdir (fpath, mode | S_IFDIR);    
+    if(res < 0) {
+        log_file_op("Mkdir",fpath,0,0, "Failed", -errno);
+    }else{
+        log_file_op("Mkdir",fpath,0,BLOCK_SIZE,"Success", 0);
+    } 
+            
+    return res < 0 ? -errno : 0;
 
-  //log_file_op("Mkdir",fpath,0,BlockSize);
-
-  return mkdir (fpath, mode | S_IFDIR) ? -errno : 0;
 }
 
 int
 ntapfuse_unlink (const char *path)
 {
-  char fpath[PATH_MAX];
-  fullpath (path, fpath);
+    char fpath[PATH_MAX];
+    fullpath (path, fpath);
 
-  return unlink (fpath) ? -errno : 0;
+    return unlink (fpath) ? -errno : 0;
 }
 
 int
 ntapfuse_rmdir (const char *path)
 {
-  char fpath[PATH_MAX];
-  fullpath (path, fpath);
+    char fpath[PATH_MAX];
+    fullpath (path, fpath);
 
-  size_t size = getDirSize(fpath);
+    int res;
 
-  //log_file_op("Rmdir",fpath,size,size);
+    res = rmdir (fpath);
 
-  return rmdir (fpath) ? -errno : 0;
+    size_t size = getDirSize(fpath);
+
+
+    if(res < 0) {
+        log_file_op("Rmdir",fpath,0,0, "Failed", -errno);
+    }else{
+        log_file_op("Rmdir",fpath,0,BLOCK_SIZE,"Success", 0);
+    }    
+
+    return res < 0 ? -errno : 0;
+
+  
+
 }
 
 int
 ntapfuse_symlink (const char *path, const char *link)
 {
-  char flink[PATH_MAX];
-  fullpath (link, flink);
+    char flink[PATH_MAX];
+    fullpath (link, flink);
 
-  return symlink (path, flink) ? -errno : 0;
+    return symlink (path, flink) ? -errno : 0;
 }
 
 int
 ntapfuse_rename (const char *src, const char *dst)
 {
-  char fsrc[PATH_MAX];
-  fullpath (src, fsrc);
+    char fsrc[PATH_MAX];
+    fullpath (src, fsrc);
 
-  char fdst[PATH_MAX];
-  fullpath (dst, fdst);
+    char fdst[PATH_MAX];
+    fullpath (dst, fdst);
 
-  return rename (fsrc, fdst) ? -errno : 0;
+    return rename (fsrc, fdst) ? -errno : 0;
 }
 
 int
 ntapfuse_link (const char *src, const char *dst)
 {
-  char fsrc[PATH_MAX];
-  fullpath (src, fsrc);
+    char fsrc[PATH_MAX];
+    fullpath (src, fsrc);
 
-  char fdst[PATH_MAX];
-  fullpath (dst, fdst);
+    char fdst[PATH_MAX];
+    fullpath (dst, fdst);
 
-  return link (fsrc, fdst) ? -errno : 0;
+    return link (fsrc, fdst) ? -errno : 0;
 }
 
 int
 ntapfuse_chmod (const char *path, mode_t mode)
 {
-  char fpath[PATH_MAX];
-  fullpath (path, fpath);
+    char fpath[PATH_MAX];
+    fullpath (path, fpath);
 
-  return chmod (fpath, mode) ? -errno : 0;
+    return chmod (fpath, mode) ? -errno : 0;
 }
 
 int
 ntapfuse_chown (const char *path, uid_t uid, gid_t gid)
 {
-  char fpath[PATH_MAX];
-  fullpath (path, fpath);
-  long fileSize;
-  struct stat info;
-  int res = 0;
-  
-  FILE *f = fopen (fpath, "r");
-  if (f == NULL) {
-    perror ("Invalid file path");
-    log_file_op ("Chown", fpath, fileSize, 0, "Failed", -errno);
-    res = -1;
-  } else { 
-    fseek (f, 0, SEEK_END); 
-    fileSize = ftell (f); //get size of the file
-    fclose (f);
 
-    if (unlink (fpath) != 0) { //unlink file
-      perror ("Error unlinking file");
-      log_file_op ("Chown", fpath, fileSize, 0, "Failed", -errno);
-      res = -1;
-    } else {
-      stat (fpath, &info); //current owner of file
-      printf ("Original owner id %d group %d\n", info.st_uid, info.st_gid); //for verifying
+    char fpath[PATH_MAX];
+    fullpath (path, fpath);
 
-      log_file_op ("Unlink", fpath, fileSize, fileSize, "Success", 0); //update current owner quota
-      
-      if (chown (fpath, uid, gid) != 0) { //link new owner to file
-        perror ("Invalid user/group");
-        log_file_op ("Chown", fpath, fileSize, 0, "Failed", -errno);
-        res = -1;
-      } else {
-        stat (fpath, &info); //new owner of file 
-        printf ("New owner id %d group %d\n", info.st_uid, info.st_gid); //for verifying
-
-        log_file_op ("Chown", fpath, fileSize, fileSize, "Success", 0); //update new owner quota
-      }
-    }
-  }
-
-  return res < 0 ? -errno : 0;
+    return chown (fpath, uid, gid) ? -errno : 0;
 }
 
 int
 ntapfuse_truncate (const char *path, off_t off)
 {
-  char fpath[PATH_MAX];
-  fullpath (path, fpath);
+    char fpath[PATH_MAX];
+    fullpath (path, fpath);
 
-  return truncate (fpath, off) ? -errno : 0;
+    return truncate (fpath, off) ? -errno : 0;
 }
 
 int
 ntapfuse_utime (const char *path, struct utimbuf *buf)
 {
-  char fpath[PATH_MAX];
-  fullpath (path, fpath);
+    char fpath[PATH_MAX];
+    fullpath (path, fpath);
 
-  return utime (fpath, buf) ? -errno : 0;
+    return utime (fpath, buf) ? -errno : 0;
 }
 
 int
 ntapfuse_open (const char *path, struct fuse_file_info *fi)
 {
-  char fpath[PATH_MAX];
-  fullpath (path, fpath);
+    char fpath[PATH_MAX];
+    fullpath (path, fpath);
 
-  int fh = open (fpath, fi->flags);
-  if (fh < 0)
-    return -errno;
+    int fh = open (fpath, fi->flags);
+    if (fh < 0) {
+        return -errno;
+    }
 
-  fi->fh = fh;
 
-  return 0;
+    fi->fh = fh;
+
+    return 0;
 }
 
-char*
-addquote (char* str)
+
+char* 
+addquote(char* str) 
 {
-  char* newstr = calloc (1, strlen(str) + 2);
-  *newstr = '\'';
-  strcat (newstr, str);
-
-  char* t = "\'";
-  strcat (newstr, t);
-
-  return newstr;
+    char* newstr = calloc(1,strlen(str)+2);
+    *newstr='\'';
+    strcat(newstr,str);
+    char* t = "\'";
+    strcat(newstr,t);
+    return newstr;
 }
 
 int
 ntapfuse_read (const char *path, char *buf, size_t size, off_t off,
 	   struct fuse_file_info *fi)
 {
-  char fpath[PATH_MAX];
-  fullpath (path, fpath);
 
-  return pread (fi->fh, buf, size, off) < 0 ? -errno : size;
+    char fpath[PATH_MAX];
+    fullpath (path, fpath);
+
+    return pread (fi->fh, buf, size, off) < 0 ? -errno : size;
 }
 
 int
 ntapfuse_write (const char *path, const char *buf, size_t size, off_t off,
 	    struct fuse_file_info *fi)
 {
-  char fpath[PATH_MAX];
-  int res;
-  int initFileSize = 0;
-  int usage = 0;
-  FILE *f;
+    char fpath[PATH_MAX];
+    int res;
+    int initFileSize=0;
+    int usage=0;
+    FILE *f;
 
-  fullpath (path, fpath);
+    fullpath (path, fpath);
 
-  if (newfile == 1) { /* if file is new */
-    usage = size < BLOCK_SIZE ? BLOCK_SIZE : size;
-    newfile = 0;
-  } else {  /* if the file already exist */
-    f = fopen (fpath, "r");
-    fseek (f, 0, SEEK_END); 
-    initFileSize = ftell (f);
-    fclose (f);
-      
-    if (initFileSize < BLOCK_SIZE) {
-      usage = initFileSize + size > BLOCK_SIZE ? initFileSize + size - BLOCK_SIZE : 0;
-    } else 
-      usage = size;
-  }
+    if (newfile==1) { /* if file is new */
+        usage=size<BLOCK_SIZE?BLOCK_SIZE:size;
+        newfile=0;
+    } else {  /* if the file already exist */
 
-  res = pwrite (fi->fh, buf, size, off);
+        f = fopen(fpath, "r");
+        fseek(f, 0, SEEK_END); 
+        initFileSize = ftell(f);
+        fclose(f);
 
-  if (res < 0) 
-    log_file_op ("Write", fpath, size, 0, "Failed", -errno);
-  else 
-    log_file_op ("Write", fpath, size, usage, "Success", 0);
+        if(initFileSize<BLOCK_SIZE) {
+            usage = initFileSize+size>BLOCK_SIZE?initFileSize+size-BLOCK_SIZE:0;
+        }else{
+            usage = size;
+        }
 
-  return res < 0 ? -errno : size;
+    }
+
+    res = pwrite (fi->fh, buf, size, off);
+
+    if(res < 0) {
+        log_file_op("Write",fpath,size,0, "Failed", -errno);
+    }else{
+        log_file_op("Write",fpath,size,usage,"Success", 0);
+    } 
+
+    return res < 0 ? -errno : size;
 }
 
 int
 ntapfuse_statfs (const char *path, struct statvfs *buf)
 {
-  char fpath[PATH_MAX];
-  fullpath (path, fpath);
+    char fpath[PATH_MAX];
+    fullpath (path, fpath);
 
-  return statvfs (fpath, buf) ? -errno : 0;
+    return statvfs (fpath, buf) ? -errno : 0;
 }
 
 int
 ntapfuse_release (const char *path, struct fuse_file_info *fi)
 {
-  return close (fi->fh) ? -errno : 0;
+    return close (fi->fh) ? -errno : 0;
 }
 
 int
 ntapfuse_fsync (const char *path, int datasync, struct fuse_file_info *fi)
 {
-  if (datasync)
-    return fdatasync (fi->fh) ? -errno : 0;
-  else
-    return fsync (fi->fh) ? -errno : 0;
+    if (datasync)
+        return fdatasync (fi->fh) ? -errno : 0;
+    else
+        return fsync (fi->fh) ? -errno : 0;
 }
 
 int
 ntapfuse_setxattr (const char *path, const char *name, const char *value,
 	    size_t size, int flags)
 {
-  char fpath[PATH_MAX];
-  fullpath (path, fpath);
+    char fpath[PATH_MAX];
+    fullpath (path, fpath);
 
-  return lsetxattr (fpath, name, value, size, flags) ? -errno : 0;
+    return lsetxattr (fpath, name, value, size, flags) ? -errno : 0;
 }
 
 int
 ntapfuse_getxattr (const char *path, const char *name, char *value, size_t size)
 {
-  char fpath[PATH_MAX];
-  fullpath (path, fpath);
+    char fpath[PATH_MAX];
+    fullpath (path, fpath);
 
-  ssize_t s = lgetxattr (fpath, name, value, size);
-  return s < 0 ? -errno : s;
+    ssize_t s = lgetxattr (fpath, name, value, size);
+    return s < 0 ? -errno : s;
 }
 
 int
 ntapfuse_listxattr (const char *path, char *list, size_t size)
 {
-  char fpath[PATH_MAX];
-  fullpath (path, fpath);
+    char fpath[PATH_MAX];
+    fullpath (path, fpath);
 
-  return llistxattr (fpath, list, size) < 0 ? -errno : 0;
+    return llistxattr (fpath, list, size) < 0 ? -errno : 0;
 }
 
 int
 ntapfuse_removexattr (const char *path, const char *name)
 {
-  char fpath[PATH_MAX];
-  fullpath (path, fpath);
+    char fpath[PATH_MAX];
+    fullpath (path, fpath);
 
-  return lremovexattr (fpath, name) ? -errno : 0;
+    return lremovexattr (fpath, name) ? -errno : 0;
 }
 
 int
 ntapfuse_opendir (const char *path, struct fuse_file_info *fi)
 {
-  char fpath[PATH_MAX];
-  fullpath (path, fpath);
-
-  DIR *dir = opendir (fpath);
-  if (dir == NULL)
-    return -errno;
-
-  fi->fh = (uint64_t) dir;
-
-  return 0;
+    char fpath[PATH_MAX];
+    fullpath (path, fpath); 
+    DIR *dir = opendir (fpath);
+    if (dir == NULL) {
+        return -errno;
+    }
+    
+    fi->fh = (uint64_t) dir;    
+    return 0;
 }
 
 int
 ntapfuse_readdir (const char *path, void *buf, fuse_fill_dir_t fill, off_t off,
 	    struct fuse_file_info *fi)
 {
-  struct dirent *de = NULL;
+    struct dirent *de = NULL;
 
-  while ((de = readdir((DIR *) fi->fh)) != NULL)
-  {
-    struct stat st;
-    memset(&st, 0, sizeof(struct stat));
-    st.st_ino = de->d_ino;
-    st.st_mode = de->d_type << 12;
-
-    if (fill(buf, de->d_name, &st, 0))
-	    break;
-  }
-
-  return 0;
+    while ((de = readdir ((DIR *) fi->fh)) != NULL) {    
+        struct stat st;
+        memset (&st, 0, sizeof (struct stat));
+        st.st_ino = de->d_ino;
+        st.st_mode = de->d_type << 12;    
+        if (fill (buf, de->d_name, &st, 0)) {
+            break;
+        }
+        
+    }
+    return 0;
 }
 
 int
 ntapfuse_releasedir (const char *path, struct fuse_file_info *fi)
 {
-  return closedir ((DIR *) fi->fh) ? -errno : 0;
+    return closedir ((DIR *) fi->fh) ? -errno : 0;
 }
 
 int
 ntapfuse_access (const char *path, int mode)
 {
-  char fpath[PATH_MAX];
-  fullpath (path, fpath);
+    char fpath[PATH_MAX];
+    fullpath (path, fpath);
 
-  return access (fpath, mode) ? -errno : 0;
+    return access (fpath, mode) ? -errno : 0;
 }
 
 void *
 ntapfuse_init (struct fuse_conn_info *conn)
 {
-  return (fuse_get_context())->private_data;
+    return (fuse_get_context())->private_data;
 }
+
