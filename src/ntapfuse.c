@@ -91,7 +91,7 @@ main (int argc, char *argv[])
 
 
     if (strcmp (command, "mount") == 0) {
-        if (argc < 4){
+        if (argc < 4) {
             usage ();
         }
 
