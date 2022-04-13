@@ -32,52 +32,51 @@ sqlite3 *DB;
 /*TODO: figure out meaning of null parameters in SQL exec */
 
 int open_db() {
-        int rc1, rc2, rc3;
-        char *err = NULL;
-        const char *filename = "log.db";
-        /* note: backslash method is the preferred way to do multline strings */
-        const char *sql1 = "CREATE TABLE IF NOT EXISTS Logs(\
-                                   Time TEXT,\
-                                   UID INT,\
-                                   Operation TEXT,\
-                                   Size INT,\
-                                   Status TEXT,\
-                                   errorCode INT,\
-                                   Path TEXT);";
+    int rc1, rc2, rc3;
+    char *err = NULL;
+    const char *filename = "log.db";
+    /* note: backslash method is the preferred way to do multline strings */
+    const char *sql1 = "CREATE TABLE IF NOT EXISTS Logs(\
+                               Time TEXT,\
+                               UID INT,\
+                               Operation TEXT,\
+                               Size INT,\
+                               Status TEXT,\
+                               errorCode INT,\
+                               Path TEXT);";
 
-        /* why does this work? the backlash escapes the newline \n char! */
-        const char *sql2 = "CREATE TABLE IF NOT EXISTS Quotas(\
-                                   Time TEXT,\
-                                   UID INT PRIMARY KEY,\
-                                   Usage INT,\
-                                   Quota INT);";
+    /* why does this work? the backlash escapes the newline \n char! */
+    const char *sql2 = "CREATE TABLE IF NOT EXISTS Quotas(\
+                           Time TEXT,\
+                           UID INT PRIMARY KEY,\
+                           NumOfFiles INT,\
+                           Usage INT,\
+                           Remaining_Quota INT);";
         
-        /* open the database connection */
-        rc1 = sqlite3_open(filename, &DB);
+    /* open the database connection */
+    rc1 = sqlite3_open(filename, &DB);
 
-        if (rc1 != SQLITE_OK) {
-                /* we cast void* to string is this right? */
-                fprintf(stderr, "Can't open database connection: %s\n", 
-                              (char *) sqlite3_errmsg16(DB)); 
-                sqlite3_close(DB);
-                return -1;
-        }
+    if (rc1 != SQLITE_OK) {
+            /* we cast void* to string is this right? */
+            fprintf(stderr, "Can't open database connection: %s\n", 
+                          (char *) sqlite3_errmsg16(DB)); 
+            sqlite3_close(DB);
+            return -1;
+    }
 
-        rc2 = sqlite3_exec(DB, sql1, NULL, NULL,&err);
+    rc2 = sqlite3_exec(DB, sql1, NULL, NULL,&err);
+    if (rc2 != SQLITE_OK) {
+            fprintf(stderr, "SQL error: %s\n", err);
+            sqlite3_free(err);
+    }
 
-        if (rc2 != SQLITE_OK) {
-                fprintf(stderr, "SQL error: %s\n", err);
-                sqlite3_free(err);
-        }
+    rc3 = sqlite3_exec(DB, sql2, NULL, NULL, &err);
+    if (rc3 != SQLITE_OK) {
+            fprintf(stderr, "SQL error: %s\n", err);
+            sqlite3_free(err);
+    }
 
-        rc3 = sqlite3_exec(DB, sql2, NULL, NULL, &err);
-
-        if (rc3 != SQLITE_OK) {
-                fprintf(stderr, "SQL error: %s\n", err);
-                sqlite3_free(err);
-        }
-
-        return rc1 || rc2 || rc3;
+    return rc1 || rc2 || rc3;
 }
 
 
@@ -86,113 +85,102 @@ void close_db() {
 }
 
 int log_file_op(char *operation, char *path, size_t size, size_t usage, char* rstatus, int errorCode) {
-        /* SQL commands to compile */
-        const char *sql = "CREATE TABLE if not exists Logs(\
-                               Time TEXT,\ 
-                               UID INT,\ 
-                               Operation TEXT,\
-                               Size INT,\
-                               Status TEXT,\
-                               errorCode INT,\
-                               Path TEXT);\ 
-                           INSERT INTO Logs\
-                               VALUES(%s, %d, %s, %d, %s,%d, %s);";  
-        char *err = NULL;
-        char *sqlbuf = NULL;
-        char *timebuf = NULL;
-        int uid;
-        int updateSize;
-        time_t now;
-        int rc,rc1;
+    /* SQL commands to compile */
+    const char *sql = "CREATE TABLE if not exists Logs(\
+                           Time TEXT,\ 
+                           UID INT,\ 
+                           Operation TEXT,\
+                           Size INT,\
+                           Status TEXT,\
+                           errorCode INT,\
+                           Path TEXT);\ 
+                       INSERT INTO Logs\
+                           VALUES(%s, %d, %s, %d, %s,%d, %s);";  
+    char *err = NULL;
+    char *sqlbuf = NULL;
+    char *timebuf = NULL;
+    int uid;
+    int updateSize;
+    time_t now;
+    int rc,rc1;
 
-        /* allocate heap data and check for succcess */
-        sqlbuf = malloc(BUF_MAX);
-        if (!sqlbuf) {
-                fprintf(stderr,"ERROR: couldn't allocate SQL buffer\n");
-                return -ENOMEM;
-        }
+    /* allocate heap data and check for succcess */
+    sqlbuf = malloc(BUF_MAX);
+    if (!sqlbuf) {
+            fprintf(stderr,"ERROR: couldn't allocate SQL buffer\n");
+            return -ENOMEM;
+    }
 
-        timebuf = malloc(TIME_MAX);
-        if (!timebuf) {
-                fprintf(stderr,"ERROR: couldn't allocate Time buffer\n");
-                return -ENOMEM;
-        }
-        /* get user id */
-        uid = getuid();  
+    timebuf = malloc(TIME_MAX);
+    if (!timebuf) {
+            fprintf(stderr,"ERROR: couldn't allocate Time buffer\n");
+            return -ENOMEM;
+    }
+    /* get user id */
+    uid = getuid();  
 
-        /* get current time and convert it to readable */
-        time(&now);
-        strftime(timebuf, TIME_MAX, "%c",localtime(&now)); 
+    /* get current time and convert it to readable */
+    time(&now);
+    strftime(timebuf, TIME_MAX, "%c",localtime(&now)); 
 
-        /* read information into buffer s */
-        sprintf(sqlbuf, sql, addquote(timebuf),
-                        uid, addquote(operation), 
-                        size, addquote(rstatus),errorCode,addquote(path));
+    /* read information into buffer s */
+    sprintf(sqlbuf, sql, addquote(timebuf),
+                    uid, addquote(operation), 
+                    size, addquote(rstatus),errorCode,addquote(path));
 
-        /* execute the SQL statement & check for success*/
-        rc = sqlite3_exec(DB, sqlbuf, NULL, NULL, &err);
-        if (rc != SQLITE_OK) {
-                fprintf(stderr, "SQL error: %s\n", err);
-                sqlite3_free(err);
-        }
-
-        /* update usage */
-        updateSize = (int) usage;
+    /* execute the SQL statement & check for success*/
+    rc = sqlite3_exec(DB, sqlbuf, NULL, NULL, &err);
+    if (rc != SQLITE_OK) {
+            fprintf(stderr, "SQL error: %s\n", err);
+            sqlite3_free(err);
+    }
         
-        /* check for growth in usage */
-        if (strcmp(operation,"Write") == 0 || strcmp(operation,"Mkdir") == 0 || strcmp(operation, "link") == 0) {
-                updateQuotas(timebuf,uid,updateSize);
-        }
-
-        /*check for shrinking usage */
-        if(strcmp(operation,"Unlink") == 0 || strcmp(operation,"Rmdir") == 0 || strcmp(operation,"Truncate") == 0) {
-                updateSize *= -1;
-                updateQuotas(timebuf,uid,updateSize);
-	
-        }
-        /* free all heap data */
-        free(sqlbuf);
-        free(timebuf);
-        return rc;
+    /* free all heap data */
+    free(sqlbuf);
+    free(timebuf);
+    return rc;
 }
 
-int updateQuotas(char* time,int uid, int size ){
-        char *sql = NULL;
-        char *sqlbuf = NULL;
-        char *err = NULL;
-        int rc;
-
-        /* allocate heap data and check for succcess */
-        sqlbuf = malloc(BUF_MAX);
-        if (!sqlbuf) {
-                fprintf(stderr,"ERROR: couldn't allocate SQL buffer\n");
-                return -ENOMEM;
-        }
-
-       	if (size >= 0) {
-                sql = "INSERT INTO Quotas(Time,UID, Usage, Quota) VALUES\
-			(%s,%d,%d,%d-%d) ON CONFLICT(UID) DO UPDATE SET \
-        		Time=%s,Usage=Usage+%d,Quota=Quota-%d;";
-       	} else {
-       		size *= -1;
-       		sql = "INSERT INTO Quotas(Time,UID, Usage, Quota) VALUES\
-			(%s,%d,%d,%d-%d) ON CONFLICT(UID) DO UPDATE SET \
-        		Time=%s,Usage=Usage-%d,Quota=Quota+%d;";
-       	}
-        
-        sprintf(sqlbuf,sql,addquote(time),
-                        uid,size,QUOTA,size,
-                        addquote(time),size,size);
-
-        rc = sqlite3_exec(DB, sqlbuf, NULL, NULL, &err);
-
-        if (rc != SQLITE_OK) {
-                fprintf(stderr, "SQL update error: %s\n", err);
-                sqlite3_free(err);
-        }
-
-        free(sqlbuf);
-        return rc;
+int updateQuotas(char* time,int uid, int size, int fileChange )
+{
+    char *sql = NULL;
+    char *sqlbuf = NULL;
+    char *err = NULL;
+    int rc;
+    /* allocate heap data and check for succcess */
+    sqlbuf = malloc(BUF_MAX);
+    if (!sqlbuf) {
+        fprintf(stderr,"ERROR: couldn't allocate SQL buffer\n");
+        return -ENOMEM;
+    }
+    /*  here we search for the user's record, and update its usage and quota,
+        and lastest quota alwasy equal initail quota - usage.
+        size is positive, we need to increase usage using upsert(if record exist, update; 
+        otherwise insert new record) */
+    if (size >= 0) {
+        sql = "INSERT INTO Quotas(Time,UID, NumOfFiles,Usage, Remaining_Quota) VALUES\
+		(%s,%d,%d,%d,%d-%d) ON CONFLICT(UID) DO UPDATE SET \
+    		Time=%s,NumOfFiles=NumOfFiles+%d,Usage=Usage+%d,Remaining_Quota=Remaining_Quota-%d;";
+    } else {
+        /* size is negative, meaning we need to decreasing usage, but the previous sqlite string doesn't work
+        because it would become "usage=usage+-size", so we use a new string with a preset "-" in it. */
+    	size *= -1;
+        fileChange *= -1;
+    	sql = "INSERT INTO Quotas(Time,UID, NumOfFiles,Usage, Remaining_Quota) VALUES\
+		(%s,%d,%d,%d,%d-%d) ON CONFLICT(UID) DO UPDATE SET \
+    		Time=%s,NumOfFiles=NumOfFiles-%d,Usage=Usage-%d,Remaining_Quota=Remaining_Quota+%d;";
+    }
+    
+    sprintf(sqlbuf,sql,addquote(time),
+            uid,fileChange,size,QUOTA,size,
+            addquote(time),fileChange,size,size);
+    rc = sqlite3_exec(DB, sqlbuf, NULL, NULL, &err);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "SQL update error: %s\n", err);
+        sqlite3_free(err);
+    }
+    free(sqlbuf);
+    return rc;
 }
 
 /* 
@@ -220,28 +208,28 @@ TODO:  IMPLEMENT ERROR HANDLING!!!
 */
 int getUsage()
 {
-        //holds the SQL command w/ placeholders 
-        char *sql = NULL;
-        //holds the SQL command w/ placeholders filled in 
-        char *sqlbuf = malloc(BUF_MAX);//allocate space 
-        //define the SQL command 
-        sql ="SELECT Usage FROM Quotas WHERE UID = %d;";
-        //place it into sqlbuf w/ getuid()
-        sprintf(sqlbuf,sql,getuid());
-        //stmt to be executed 
-        sqlite3_stmt * stmt;
-        //prepare the statement with the proper parameters 
-        sqlite3_prepare_v2(DB, sqlbuf, -1, &stmt, NULL);
-        //execute statement 
-        sqlite3_step(stmt);
-        //retrieve the usage from the table 
-        int usage = sqlite3_column_int(stmt,0);
-        //delete the statement 
-        sqlite3_finalize(stmt);
-        //free the buffer 
-        free(sqlbuf);
-        //return the usage 
-        return usage;
+    //holds the SQL command w/ placeholders 
+    char *sql = NULL;
+    //holds the SQL command w/ placeholders filled in 
+    char *sqlbuf = malloc(BUF_MAX);//allocate space 
+    //define the SQL command 
+    sql ="SELECT Usage FROM Quotas WHERE UID = %d;";
+    //place it into sqlbuf w/ getuid()
+    sprintf(sqlbuf,sql,getuid());
+    //stmt to be executed 
+    sqlite3_stmt * stmt;
+    //prepare the statement with the proper parameters 
+    sqlite3_prepare_v2(DB, sqlbuf, -1, &stmt, NULL);
+    //execute statement 
+    sqlite3_step(stmt);
+    //retrieve the usage from the table 
+    int usage = sqlite3_column_int(stmt,0);
+    //delete the statement 
+    sqlite3_finalize(stmt);
+    //free the buffer 
+    free(sqlbuf);
+    //return the usage 
+    return usage;
 }
 
 

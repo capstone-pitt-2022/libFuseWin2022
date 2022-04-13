@@ -23,6 +23,7 @@
 #define _XOPEN_SOURCE 500
 #define BLOCK_SIZE 4096
 #define QUOTA 1000000
+#define TIME_MAX 80
 
 #include "ntapfuse_ops.h"
 #include "database.h"
@@ -43,9 +44,31 @@
 
 /*global variable to track?*/
 int newfile=0;
-/* global pointer to database connection object */
-sqlite3 *DB;
 
+
+char* getTime()
+{
+  char *timebuf = NULL;
+  time_t now;
+  timebuf = malloc(TIME_MAX);
+  if (!timebuf) {
+      return NULL;
+  }
+  time(&now);
+  strftime(timebuf, TIME_MAX, "%c",localtime(&now)); 
+  return timebuf;
+}
+
+int getOwnerId(char* path)
+{
+  struct stat stbuf;
+  int ret = stat(path,&stbuf);  
+  if(ret<0) {
+      return -1;
+  }else {
+      return stbuf.st_uid;
+  }
+}
 
 /**
  * Appends the path of the root filesystem to the given path, returning
@@ -121,6 +144,7 @@ ntapfuse_mkdir (const char *path, mode_t mode)
   else 
   {
     log_file_op("Mkdir",fpath,BLOCK_SIZE,BLOCK_SIZE,"Success", 0);
+    updateQuotas(getTime(),getuid(),BLOCK_SIZE,0);
   }
 
   return ret ? -errno : 0;
@@ -133,6 +157,7 @@ ntapfuse_unlink (const char *path)
   char fpath[PATH_MAX];
   fullpath (path, fpath);
 
+  int uid = getOwnerId(fpath);  
   //get the size of the src 
   int file_size = getFileSize(fpath);
   //get that in blocks 
@@ -148,6 +173,7 @@ ntapfuse_unlink (const char *path)
   else 
   {
     log_file_op("Unlink",fpath,numBlocks*BLOCK_SIZE,numBlocks*BLOCK_SIZE,"Success", 0);
+    updateQuotas(getTime(),uid,-numBlocks*BLOCK_SIZE,-1);
   }
 
   return ret ? -errno : 0;
@@ -160,8 +186,10 @@ ntapfuse_rmdir (const char *path)
   char fpath[PATH_MAX];
   fullpath (path, fpath);
 
+  int uid = getOwnerId(fpath);
   //perform the op 
   int ret = rmdir(fpath);
+  
   //rmdir has failed -- log the op do not increment usage 
   if(ret < 0) 
   {
@@ -171,6 +199,7 @@ ntapfuse_rmdir (const char *path)
   else 
   {
     log_file_op("Rmdir",fpath,-BLOCK_SIZE,-BLOCK_SIZE,"Success", 0);
+    updateQuotas(getTime(),uid,-BLOCK_SIZE,0);
   }
 
   return ret ? -errno : 0;
@@ -203,8 +232,9 @@ ntapfuse_link (const char *src, const char *dst)
   char fsrc[PATH_MAX];
   fullpath (src, fsrc);
 
+  int uid = getOwnerId(fsrc);
   //get the size of the src 
-  int file_size = getFileSize(fullpath);
+  int file_size = getFileSize(fsrc);
   //get that in blocks 
   int numBlocks = getNumBlocks(file_size);
   //get the new usage 
@@ -212,7 +242,7 @@ ntapfuse_link (const char *src, const char *dst)
   //see if this surpasses the quota 
   if(newUsage>QUOTA)
   {
-    log_file_op("link",fsrc,numBlocks*BLOCK_SIZE,0, "Failed", -ENOBUFS);
+    log_file_op("Link",fsrc,numBlocks*BLOCK_SIZE,0, "Failed", -ENOBUFS);
     return -ENOBUFS;
   }
   char fdst[PATH_MAX];
@@ -222,12 +252,13 @@ ntapfuse_link (const char *src, const char *dst)
   //link has failed -- log the op do not increment usage 
   if(ret < 0) 
   {
-    log_file_op("link",fsrc,numBlocks*BLOCK_SIZE,0, "Failed", ret);
+    log_file_op("Link",fsrc,numBlocks*BLOCK_SIZE,0, "Failed", ret);
   }
   //link has succeeded -- log the op and increment usage 
   else 
   {
-    log_file_op("link",fsrc,numBlocks*BLOCK_SIZE,numBlocks*BLOCK_SIZE,"Success", 0);
+    log_file_op("Link",fsrc,numBlocks*BLOCK_SIZE,numBlocks*BLOCK_SIZE,"Success", 0);
+    updateQuotas(getTime(),uid,numBlocks*BLOCK_SIZE,1);
   }
 
   return ret ? -errno : 0;
@@ -255,28 +286,38 @@ int
 ntapfuse_truncate (const char *path, off_t off)
 {
   char fpath[PATH_MAX];
-  fullpath (path, fpath);
-  //get the file size 
-  int file_size = getFileSize(fpath);
-  //get the number of blocks of the file 
-  int numBlocks = getNumBlocks(file_size);
-  //get the usage 
-  int usage = numBlocks * BLOCK_SIZE;
-  //perform the truncate 
-  int res = truncate (fpath, off);
+  fullpath (path, fpath);  
+  int initFileSize=0;
+  int usage=0;
+  FILE *f;
+  int res;  
+  // get the initail file size
+  f = fopen(fpath, "r");
+  if(f){
+      fseek(f, 0, SEEK_END); 
+      initFileSize = ftell(f);
+      fclose(f);
+  }else{
+      return -1;
+  }  
+  initFileSize = initFileSize%BLOCK_SIZE!=0? (initFileSize/BLOCK_SIZE + 1)*BLOCK_SIZE : initFileSize; 
 
-  //truncate has failed -- log the op do not modify usage 
-  if(res < 0) 
-  {
-    log_file_op("Truncate",fpath,file_size,0, "Failed", res);
-  }
-  //truncate has succeeded -- log the op and decrement usage 
-  else 
-  {
-    log_file_op("Truncate",fpath,0,file_size,"Success", 0);
-  }
-
-  return res ? -errno : 0;
+  /* compare the initail file size, the truncate size, and the block size to determine the usage change
+  when truncate size greater than initial file size, nothing change, if truncate size less than initial file
+  size, than check if it's less than the block size then decide the usage */  
+  if(off>=initFileSize) {
+      usage=0;
+  }else {
+      usage = off>BLOCK_SIZE? ((off-initFileSize)/BLOCK_SIZE)*BLOCK_SIZE:BLOCK_SIZE-initFileSize;
+  }  
+  res = truncate (fpath, off);  
+  if(res < 0){
+      log_file_op("Truncate",fpath,0,0, "Failed", -errno);
+  }else {
+      updateQuotas(getTime(),getuid(),usage,0);
+      log_file_op("Truncate",fpath,usage,usage,"Success", 0);
+  }      
+  return res < 0 ? -errno : 0;
 }
 
 int
@@ -346,6 +387,8 @@ ntapfuse_write (const char *path, const char *buf, size_t size, off_t off,
   //get the file size 
   int file_size = getFileSize(fpath);
 
+  int uid = getOwnerId(fpath);
+
   //empty file, allocate empty block (and then some if circumstances dictate)
   if(file_size==0)
   {
@@ -411,6 +454,7 @@ ntapfuse_write (const char *path, const char *buf, size_t size, off_t off,
   else 
   {
     log_file_op("Write",fpath,size,usage,"Success", 0);
+    updateQuotas(getTime(),uid,usage,0);
   }
   printf("RES %d\n",res);
 
