@@ -22,6 +22,7 @@ The following packages need to be installed using:
 Please ensure that the version of python installed is >= 3.6.
 Further please ensure that you have installed the pytest package:
 
+Also be sure that the version of sqlite3 is >= 3.24
 ```bash
   $ pip install pytest
 ```
