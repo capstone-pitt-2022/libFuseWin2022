@@ -2,7 +2,7 @@
 # testing script for ntapfuse
 # code by @author Carter S. Levinson <carter.levinson@pitt.edu>
 
-#TODO:use getopt to allow for options for the script
+#TODO: use getopt to allow for parsing of cli options for the script
 
 # get the name of calling user using whoami before sudo
 mainUser=$(whoami)
@@ -43,7 +43,7 @@ mkdir -p ntapfuse/mount_dir
 printf "Modifying ownership and permissions of mount and base dirs...\n"
 sudo chmod -R g+rwx ./ntapfuse
 sudo chgrp -R FUSE ./ntapfuse
-#printf "Change directory to test directory..."
+printf "Change directory to test directory..."
 cd ntapfuse
 
 
@@ -52,8 +52,6 @@ ntapfuse mount base_dir mount_dir -o allow_other
 sudo chmod g+rwx log.db
 sudo chgrp -R FUSE log.db
 
-# sudo chmod -R g+rw mount_dir base_dir
-# sudo chgrp -R FUSE mount_dir base_dir
 # run the test suites for main user 
 printf "Running the test suite for %s...\n" ${mainUser}
 pytest ${testFile} | tee -a ${testOutput}
@@ -62,7 +60,6 @@ pytest ${testFile} | tee -a ${testOutput}
 for u in ${!users[@]}; do 
    printf "Running the test suite for %s\n" ${users[$u]} | tee -a ${testOutput}
    sudo runuser -u ${users[$u]} -- pytest ${testFile} | tee -a ${testOutput}
-   #rm -rf folder*
 done
 
 printf "Unmounting ntapfuse...\n"
@@ -83,14 +80,14 @@ sudo groupdel -f FUSE
 printf "Removing all lingering files from the test directories..\n"
 rm -rf ./base_dir/*
 rm -rf ./mount_dir/*
-# printf "Removing the database file \n"
-#rm -f ./log.db
-# change back to parent directory
+printf "Removing the database file \n"
+rm -f ./log.db
+printf "Returning to main directory...\n"
 cd ..
-#printf "Now removing the mount and base directories...\n"
-#rmdir ./ntapfuse/base_dir
-#rmdir ./ntapfuse/mount_dir
-#rmdir ./ntapfuse
+printf "Now removing the mount and base directories...\n"
+rmdir ./ntapfuse/base_dir
+rmdir ./ntapfuse/mount_dir
+rmdir ./ntapfuse
 printf "The results of the test(s) were written to: %s\n" ${testOutput}
 
 
