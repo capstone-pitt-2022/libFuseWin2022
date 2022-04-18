@@ -37,7 +37,6 @@
 
 #include <sys/xattr.h>
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <sqlite3.h>
 
 /* global variable to track */
@@ -183,11 +182,40 @@ ntapfuse_chmod (const char *path, mode_t mode)
 int
 ntapfuse_chown (const char *path, uid_t uid, gid_t gid)
 {
-
     char fpath[PATH_MAX];
+    int res;
+    int usage = 0;
     fullpath (path, fpath);
+    //get file size
+    long fileSize = getFileSize (fpath);
 
-    return chown (fpath, uid, gid) ? -errno : 0;
+    //old user id for quota updating
+    int oldUid = getOwnerId (fpath);
+    
+    //get blocks allocated by file
+    int numBlocks = getNumBlocks(fileSize);
+    usage += numBlocks * BLOCK_SIZE;
+
+    //op fails due to exceeding user quota
+    if (newUsage > QUOTA) {
+        log_file_op ("Chown", fpath, fileSize, 0, "Failed", -ENOBUFS);
+        return -ENOBUFS;
+    }
+
+    //perform chown
+    res = chown (fpath, uid, gid);
+
+    if (res < 0) { //failed
+        log_file_op ("Chown", fpath, fileSize, 0, "Failed", -errno);
+    } else { //success
+        log_file_op ("Chown", fpath, fileSize, fileSize, "Success", 0);
+        updateQuotas(getTime(), oldUid, -usage, 0);
+        updateQuotas(getTime(), uid, usage, 0);
+    }
+
+    printf("RES %d\n", res);
+
+    return res < 0 ? -errno : 0;
 }
 
 int

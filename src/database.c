@@ -172,7 +172,7 @@ int log_file_op(char *operation, char *path, size_t size, size_t usage, char* rs
     updateSize = (int) usage;
     
     /* check for growth in usage */
-    if (strcmp(operation,"Write") == 0 || strcmp(operation,"Mkdir") == 0) {
+    if (strcmp(operation,"Write") == 0 || strcmp(operation,"Mkdir") == 0 || strcmp(operation, "Chown") == 0) {
         updateQuotas(timebuf,uid,updateSize);
     }
     /*check for shrinking usage */
