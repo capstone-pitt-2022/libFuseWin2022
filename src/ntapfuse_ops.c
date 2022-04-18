@@ -37,7 +37,6 @@
 
 #include <sys/xattr.h>
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <sqlite3.h>
 
 /* global variable to track */
@@ -184,45 +183,37 @@ int
 ntapfuse_chown (const char *path, uid_t uid, gid_t gid)
 {
     char fpath[PATH_MAX];
+    int res;
+    int usage = 0;
     fullpath (path, fpath);
-    long fileSize;
-    struct stat info;
-    int res = 0;
+    //get file size
+    long fileSize = getFileSize (fpath);
 
-    FILE *f = fopen (fpath, "r");
-    if (f == NULL) {
-        perror ("Invalid file path");
-        log_file_op ("Chown", fpath, 0, 0, "Failed", -errno);
-        res = -1;
-    } else { 
-        fseek (f, 0, SEEK_END); 
-        fileSize = ftell (f); //get size of the file
-        fclose (f);
+    //old user id for quota updating
+    int oldUid = getOwnerId (fpath);
+    
+    //get blocks allocated by file
+    int numBlocks = getNumBlocks(fileSize);
+    usage += numBlocks * BLOCK_SIZE;
 
-        if (unlink (fpath) != 0) { //unlink file
-            perror ("Error unlinking file");
-            log_file_op ("Chown", fpath, fileSize, 0, "Failed", -errno);
-            res = -1;
-        } else {
-            stat (fpath, &info); //current owner of file for verifying
-            printf ("Original owner id %d group %d\n", info.st_uid, info.st_gid); //for verifying
-
-            //unlink as a part of chown operation
-            log_file_op ("Unlink", fpath, fileSize, fileSize, "Success", 0); //update current owner quota
-
-            if (chown (fpath, uid, gid) != 0) { //link new owner to file
-                perror ("Invalid user/group");
-                log_file_op ("Chown", fpath, fileSize, 0, "Failed", -errno);
-                res = -1;
-            } else {
-                stat (fpath, &info); //new owner of file for verifying 
-                printf ("New owner id %d group %d\n", info.st_uid, info.st_gid); //for verifying
-
-                //actual chown to new owner
-                log_file_op ("Chown", fpath, fileSize, fileSize, "Success", 0); //update new owner quota
-            }
-        }
+    //op fails due to exceeding user quota
+    if (newUsage > QUOTA) {
+        log_file_op ("Chown", fpath, fileSize, 0, "Failed", -ENOBUFS);
+        return -ENOBUFS;
     }
+
+    //perform chown
+    res = chown (fpath, uid, gid);
+
+    if (res < 0) { //failed
+        log_file_op ("Chown", fpath, fileSize, 0, "Failed", -errno);
+    } else { //success
+        log_file_op ("Chown", fpath, fileSize, fileSize, "Success", 0);
+        updateQuotas(getTime(), oldUid, -usage, 0);
+        updateQuotas(getTime(), uid, usage, 0);
+    }
+
+    printf("RES %d\n", res);
 
     return res < 0 ? -errno : 0;
 }
