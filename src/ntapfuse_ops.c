@@ -174,11 +174,9 @@ int ntapfuse_utime(const char *path, struct utimbuf *buf) {
   fullpath(path, fpath);
 
   return utime(fpath, buf) ? -errno : 0;
->>>>>>> ntap/main
 }
 
 int ntapfuse_open(const char *path, struct fuse_file_info *fi) {
-<<<<<<< HEAD
   char fpath[PATH_MAX];
   fullpath(path, fpath);
 
@@ -188,15 +186,6 @@ int ntapfuse_open(const char *path, struct fuse_file_info *fi) {
   fi->fh = fh;
 
   return 0;
-}
-
-char *addquote(char *str) {
-  char *newstr = calloc(1, strlen(str) + 2);
-  *newstr = '\'';
-  strcat(newstr, str);
-  char *t = "\'";
-  strcat(newstr, t);
-  return newstr;
 }
 
 char *addquote(char *str) {
@@ -274,45 +263,37 @@ int ntapfuse_fsync(const char *path, int datasync, struct fuse_file_info *fi) {
     return fsync(fi->fh) ? -errno : 0;
 }
 
-int
-ntapfuse_setxattr (const char *path, const char *name, const char *value,
-{
+int ntapfuse_setxattr(const char *path, const char *name, const char *value,
+                      size_t size, int flags) {
   char fpath[PATH_MAX];
   fullpath(path, fpath);
 
   return lsetxattr(fpath, name, value, size, flags) ? -errno : 0;
 }
 
-int
-ntapfuse_getxattr (const char *path, const char *name, char *value, size_t size)
-{
+int ntapfuse_getxattr(const char *path, const char *name, char *value,
+                      size_t size) {
   char fpath[PATH_MAX];
   fullpath(path, fpath);
   ssize_t s = lgetxattr(fpath, name, value, size);
   return s < 0 ? -errno : s;
 }
 
-int
-ntapfuse_listxattr (const char *path, char *list, size_t size)
-{
+int ntapfuse_listxattr(const char *path, char *list, size_t size) {
   char fpath[PATH_MAX];
   fullpath(path, fpath);
 
   return llistxattr(fpath, list, size) < 0 ? -errno : 0;
 }
 
-int
-ntapfuse_removexattr (const char *path, const char *name)
-{
+int ntapfuse_removexattr(const char *path, const char *name) {
   char fpath[PATH_MAX];
   fullpath(path, fpath);
 
   return lremovexattr(fpath, name) ? -errno : 0;
 }
 
-int
-ntapfuse_opendir (const char *path, struct fuse_file_info *fi)
-{
+int ntapfuse_opendir(const char *path, struct fuse_file_info *fi) {
   char fpath[PATH_MAX];
   fullpath(path, fpath);
   DIR *dir = opendir(fpath);
@@ -324,10 +305,8 @@ ntapfuse_opendir (const char *path, struct fuse_file_info *fi)
   return 0;
 }
 
-int
-ntapfuse_readdir (const char *path, void *buf, fuse_fill_dir_t fill, off_t off,	   
-                  struct fuse_file_info *fi)
-{
+int ntapfuse_readdir(const char *path, void *buf, fuse_fill_dir_t fill,
+                     off_t off, struct fuse_file_info *fi) {
   struct dirent *de = NULL;
 
   while ((de = readdir((DIR *)fi->fh)) != NULL) {
@@ -342,24 +321,17 @@ ntapfuse_readdir (const char *path, void *buf, fuse_fill_dir_t fill, off_t off,
   return 0;
 }
 
-int
-ntapfuse_releasedir (const char *path, struct fuse_file_info *fi)
-{
+int ntapfuse_releasedir(const char *path, struct fuse_file_info *fi) {
   return closedir((DIR *)fi->fh) ? -errno : 0;
 }
 
-int
-ntapfuse_access (const char *path, int mode)
-{
+int ntapfuse_access(const char *path, int mode) {
   char fpath[PATH_MAX];
   fullpath(path, fpath);
 
   return access(fpath, mode) ? -errno : 0;
 }
 
-void *
-ntapfuse_init (struct fuse_conn_info *conn)
-{
-=======
+void *ntapfuse_init(struct fuse_conn_info *conn) {
   return (fuse_get_context())->private_data;
 }
