@@ -332,7 +332,6 @@ ntapfuse_chown (const char *path, uid_t uid, gid_t gid)
 
   if(res<0) {
       log_file_op("Chown", fpath, size, size, "Failed", -errno);
-      return -errno;
   }else {
       log_file_op("Chown", fpath, size, size, "Success", 0); 
       updateQuotas(time,ori_uid,size*-1,-numFile);
