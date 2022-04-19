@@ -70,6 +70,26 @@ int getOwnerId(char* path)
   }
 }
 
+int getNumOfFiles(char* dirPath)
+{
+    FILE *fp;
+    int size;
+    char sizeChar[100];
+	char res[100];
+    	char commandBuf[100];
+	char *command = "find %s -type f|wc -l";
+    sprintf(commandBuf,command,dirPath);
+	fp = popen(commandBuf,"r");
+	
+	int ret = fscanf(fp,"%s",sizeChar);
+    if(ret>=0) {
+        size = atoi(sizeChar);
+    }else{
+        return ret;
+    } 
+    return size;
+}
+
 /**
  * Appends the path of the root filesystem to the given path, returning
  * the result in buf.
@@ -125,7 +145,7 @@ ntapfuse_mkdir (const char *path, mode_t mode)
   fullpath (path, fpath);
 
   //get the updated usage with the additional directory 
-  int newUsage = BLOCK_SIZE + getUsage();
+  int newUsage = BLOCK_SIZE + getUsage(getuid());
 
   //check if it surpasses the quota -- if so do not perform the op and return failure 
   if(newUsage > QUOTA) 
@@ -238,7 +258,7 @@ ntapfuse_link (const char *src, const char *dst)
   //get that in blocks 
   int numBlocks = getNumBlocks(file_size);
   //get the new usage 
-  int newUsage = getUsage() + (numBlocks * BLOCK_SIZE);
+  int newUsage = getUsage(getuid()) + (numBlocks * BLOCK_SIZE);
   //see if this surpasses the quota 
   if(newUsage>QUOTA)
   {
@@ -277,9 +297,49 @@ int
 ntapfuse_chown (const char *path, uid_t uid, gid_t gid)
 {
   char fpath[PATH_MAX];
-  fullpath (path, fpath);
+  fullpath (path, fpath);    
+  int res;
+  struct stat info;
+  int ori_uid;
+  int ori_gid;
+  size_t size;
+  int numFile=0;    
+  char* time = getTime();  
 
-  return chown (fpath, uid, gid) ? -errno : 0;
+  if (stat(fpath, &info) != 0) {
+      time = "stat failed";
+      perror("stat() error");
+  }else {
+      // check if it's file or directory
+      if(S_ISREG(info.st_mode)) {
+          numFile = 1; 
+      }else if(S_ISDIR(info.st_mode)) {
+          numFile = getNumOfFiles(fpath);
+      }
+      ori_uid = info.st_uid;
+      ori_gid = info.st_gid;
+      size = info.st_size;
+  }  
+
+  size = size>BLOCK_SIZE?size:BLOCK_SIZE;
+  int usage = getUsage(uid);
+  
+  if(usage+size<QUOTA) {
+      res = chown (fpath, uid, gid);
+  }else {
+      return -1;
+  }
+
+  if(res<0) {
+      log_file_op("Chown", fpath, size, size, "Failed", -errno);
+      return -errno;
+  }else {
+      log_file_op("Chown", fpath, size, size, "Success", 0); 
+      updateQuotas(time,ori_uid,size*-1,-numFile);
+      updateQuotas(time,uid,size,numFile);
+  }
+  
+  return res < 0 ? -errno : 0;
 }
 
 int
@@ -425,7 +485,7 @@ ntapfuse_write (const char *path, const char *buf, size_t size, off_t off,
   }
   
   //get the updated usage 
-  int newUsage = usage + getUsage(); 
+  int newUsage = usage + getUsage(getuid()); 
   /*
     If the newUsage exceeds the quota, error returned will 
     be ENOBUFS which = Insufficient resources were available in the system to perform the operation.

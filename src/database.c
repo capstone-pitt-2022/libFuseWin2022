@@ -206,7 +206,7 @@ int getDirSize(char* dirPath) {
 /*
 TODO:  IMPLEMENT ERROR HANDLING!!!
 */
-int getUsage()
+int getUsage(int uid)
 {
     //holds the SQL command w/ placeholders 
     char *sql = NULL;
@@ -215,7 +215,7 @@ int getUsage()
     //define the SQL command 
     sql ="SELECT Usage FROM Quotas WHERE UID = %d;";
     //place it into sqlbuf w/ getuid()
-    sprintf(sqlbuf,sql,getuid());
+    sprintf(sqlbuf,sql,uid);
     //stmt to be executed 
     sqlite3_stmt * stmt;
     //prepare the statement with the proper parameters 
