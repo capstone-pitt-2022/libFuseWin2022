@@ -92,9 +92,9 @@ ntapfuse_mkdir (const char *path, mode_t mode)
     fullpath (path, fpath); 
     int res;
     res = mkdir (fpath, mode | S_IFDIR);    
-    if(res < 0) {
+    if (res < 0) {
         log_file_op("Mkdir",fpath,0,0, "Failed", -errno);
-    }else{
+    } else {
         log_file_op("Mkdir",fpath,0,BLOCK_SIZE,"Success", 0);
     } 
             
@@ -123,9 +123,9 @@ ntapfuse_rmdir (const char *path)
 
     res = rmdir (fpath);
 
-    if(res < 0) {
+    if (res < 0) {
         log_file_op("Rmdir",fpath,0,0, "Failed", -errno);
-    }else {
+    } else {
         log_file_op("Rmdir",fpath,size,size,"Success", 0);
     }    
 
@@ -264,18 +264,18 @@ ntapfuse_write (const char *path, const char *buf, size_t size, off_t off,
         initFileSize = ftell(f);
         fclose(f);
 
-        if(initFileSize<BLOCK_SIZE) {
+        if (initFileSize<BLOCK_SIZE) {
             usage = initFileSize+size>BLOCK_SIZE?initFileSize+size-BLOCK_SIZE:0;
-        }else{
+        } else {
             usage = size;
         }
     }
 
     res = pwrite (fi->fh, buf, size, off);
 
-    if(res < 0) {
+    if (res < 0) {
         log_file_op("Write",fpath,size,0, "Failed", -errno);
-    }else{
+    } else {
         log_file_op("Write",fpath,size,usage,"Success", 0);
     } 
 
