@@ -1,10 +1,9 @@
 /**
  * Project: ntapfuse
- * Authors: Samuel Kenney <samuel.kenney48@gmail.com>
- *          August Sodora III <augsod@gmail.com>
- *          Qizhe Wang <qiw68@pitt.edu>
- *          Carter S. Levinson <carter.levinson@pitt.edu>
- *          Danny Yu <chy75@pitt.edu>
+ * Author: Samuel Kenney <samuel.kenney48@gmail.com>
+ *         August Sodora III <augsod@gmail.com>
+ *         Qizhe Wang <qiw68@pitt.edu>
+ *         Carter S. Levinson <carter.levinson@pitt.edu>
  * File: ntapfuse_ops.c
  * License: GPLv3
  *
@@ -37,11 +36,12 @@
 
 #include <sys/xattr.h>
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <sqlite3.h>
 
-/* global variable to track */
-int newfile = 0;
+
+/*global variable to track?*/
+int newfile=0;
+
 
 /**
  * Appends the path of the root filesystem to the given path, returning
@@ -56,11 +56,10 @@ fullpath (const char *path, char *buf)
 }
 
 
-/** 
- * The following functions describe FUSE operations. Each operation appends
- * the path of the root filesystem to the given path in order to give the
- * mirrored path. 
- */
+/* The following functions describe FUSE operations. Each operation appends
+   the path of the root filesystem to the given path in order to give the
+   mirrored path. */
+
 int
 ntapfuse_getattr (const char *path, struct stat *buf)
 {
@@ -82,9 +81,8 @@ ntapfuse_mknod (const char *path, mode_t mode, dev_t dev)
 {
     char fpath[PATH_MAX];
     fullpath (path, fpath);
-    newfile = 1;  
+    newfile=1;  
     return mknod (fpath, mode, dev) ? -errno : 0;
-
 }
 
 int
@@ -94,9 +92,9 @@ ntapfuse_mkdir (const char *path, mode_t mode)
     fullpath (path, fpath); 
     int res;
     res = mkdir (fpath, mode | S_IFDIR);    
-    if(res < 0) {
+    if (res < 0) {
         log_file_op("Mkdir",fpath,0,0, "Failed", -errno);
-    }else{
+    } else {
         log_file_op("Mkdir",fpath,0,BLOCK_SIZE,"Success", 0);
     } 
             
@@ -120,21 +118,18 @@ ntapfuse_rmdir (const char *path)
     fullpath (path, fpath);
 
     int res;
+    
+    size_t size = getDirSize(fpath);
 
     res = rmdir (fpath);
 
-    size_t size = getDirSize(fpath);
-
-
-    if(res < 0) {
+    if (res < 0) {
         log_file_op("Rmdir",fpath,0,0, "Failed", -errno);
-    }else{
-        log_file_op("Rmdir",fpath,0,BLOCK_SIZE,"Success", 0);
+    } else {
+        log_file_op("Rmdir",fpath,size,size,"Success", 0);
     }    
 
     return res < 0 ? -errno : 0;
-
-  
 
 }
 
@@ -183,7 +178,6 @@ ntapfuse_chmod (const char *path, mode_t mode)
 int
 ntapfuse_chown (const char *path, uid_t uid, gid_t gid)
 {
-
     char fpath[PATH_MAX];
     fullpath (path, fpath);
 
@@ -219,16 +213,12 @@ ntapfuse_open (const char *path, struct fuse_file_info *fi)
         return -errno;
     }
 
-
     fi->fh = fh;
 
     return 0;
 }
 
-
-char* 
-addquote(char* str) 
-{
+char* addquote(char* str) {
     char* newstr = calloc(1,strlen(str)+2);
     *newstr='\'';
     strcat(newstr,str);
@@ -236,6 +226,8 @@ addquote(char* str)
     strcat(newstr,t);
     return newstr;
 }
+
+
 
 int
 ntapfuse_read (const char *path, char *buf, size_t size, off_t off,
@@ -247,6 +239,8 @@ ntapfuse_read (const char *path, char *buf, size_t size, off_t off,
 
     return pread (fi->fh, buf, size, off) < 0 ? -errno : size;
 }
+
+
 
 int
 ntapfuse_write (const char *path, const char *buf, size_t size, off_t off,
@@ -270,19 +264,18 @@ ntapfuse_write (const char *path, const char *buf, size_t size, off_t off,
         initFileSize = ftell(f);
         fclose(f);
 
-        if(initFileSize<BLOCK_SIZE) {
+        if (initFileSize<BLOCK_SIZE) {
             usage = initFileSize+size>BLOCK_SIZE?initFileSize+size-BLOCK_SIZE:0;
-        }else{
+        } else {
             usage = size;
         }
-
     }
 
     res = pwrite (fi->fh, buf, size, off);
 
-    if(res < 0) {
+    if (res < 0) {
         log_file_op("Write",fpath,size,0, "Failed", -errno);
-    }else{
+    } else {
         log_file_op("Write",fpath,size,usage,"Success", 0);
     } 
 
@@ -315,7 +308,7 @@ ntapfuse_fsync (const char *path, int datasync, struct fuse_file_info *fi)
 
 int
 ntapfuse_setxattr (const char *path, const char *name, const char *value,
-	    size_t size, int flags)
+	       size_t size, int flags)
 {
     char fpath[PATH_MAX];
     fullpath (path, fpath);
@@ -367,7 +360,7 @@ ntapfuse_opendir (const char *path, struct fuse_file_info *fi)
 
 int
 ntapfuse_readdir (const char *path, void *buf, fuse_fill_dir_t fill, off_t off,
-	    struct fuse_file_info *fi)
+	      struct fuse_file_info *fi)
 {
     struct dirent *de = NULL;
 
@@ -378,9 +371,9 @@ ntapfuse_readdir (const char *path, void *buf, fuse_fill_dir_t fill, off_t off,
         st.st_mode = de->d_type << 12;    
         if (fill (buf, de->d_name, &st, 0)) {
             break;
-        }
-        
+        } 
     }
+
     return 0;
 }
 

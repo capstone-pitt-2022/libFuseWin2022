@@ -199,21 +199,21 @@ int getDirSize(char* dirPath)
 {
     FILE *fp;
     int size;
+    char sizeChar[100];
+    char dir[100];
     char res[100];
     char commandBuf[100];
-    char *command = "du -sh %s";
-    
+    char *command = "du -s %s";
+
     sprintf(commandBuf,command,dirPath);
-    fp = popen(commandBuf,"r");
-    int ret = fread(res,50,1,fp);
-    
-    if(ret>0) {
-        size = atoi(strtok(res, " "))*1024;
+	fp = popen(commandBuf,"r");
+	
+	int ret = fscanf(fp,"%s,%s",sizeChar,dir);
+    if(ret>=0) {
+        size = atoi(sizeChar)*1024;
     }else {
-        return -1;
+        return ret;
     } 
-    
-    printf("%d\n",size);
     return size;
 }
 
