@@ -67,4 +67,7 @@ void *ntapfuse_init (struct fuse_conn_info *conn);
 
 /* helper functions */
 char* addquote(char* str);
+int getFileSize(char * path);
+int getNumBlocks(int fileSize);
+
 #endif /* NTAPFUSE_H */

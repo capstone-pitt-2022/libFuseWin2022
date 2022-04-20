@@ -1,0 +1,114 @@
+============================= test session starts ==============================
+platform linux -- Python 3.9.7, pytest-6.0.2, py-1.10.0, pluggy-0.13.0 -- /usr/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/qizhe/Desktop/forSame/libFuseWin2022
+collecting ... Making install in src
+make[1]: Entering directory '/home/qizhe/Desktop/forSame/libFuseWin2022/src'
+make[2]: Entering directory '/home/qizhe/Desktop/forSame/libFuseWin2022/src'
+ /usr/bin/mkdir -p '/usr/local/bin'
+  /usr/bin/install -c ntapfuse '/usr/local/bin'
+make[2]: Nothing to be done for 'install-data-am'.
+make[2]: Leaving directory '/home/qizhe/Desktop/forSame/libFuseWin2022/src'
+make[1]: Leaving directory '/home/qizhe/Desktop/forSame/libFuseWin2022/src'
+make[1]: Entering directory '/home/qizhe/Desktop/forSame/libFuseWin2022'
+make[2]: Entering directory '/home/qizhe/Desktop/forSame/libFuseWin2022'
+make[2]: Nothing to be done for 'install-exec-am'.
+ /usr/bin/mkdir -p '/usr/local/share/doc/ntapfuse'
+ /usr/bin/install -c -m 644 README.md '/usr/local/share/doc/ntapfuse'
+make[2]: Leaving directory '/home/qizhe/Desktop/forSame/libFuseWin2022'
+make[1]: Leaving directory '/home/qizhe/Desktop/forSame/libFuseWin2022'
+Adding user `user666' to group `sudo' ...
+Adding user user666 to group sudo
+Done.
+Adding user `user666' to group `qizhe' ...
+Adding user user666 to group qizhe
+Done.
+Adding user `user888' to group `sudo' ...
+Adding user user888 to group sudo
+Done.
+Adding user `user888' to group `qizhe' ...
+Adding user user888 to group qizhe
+Done.
+Adding user `user999' to group `sudo' ...
+Adding user user999 to group sudo
+Done.
+Adding user `user999' to group `qizhe' ...
+Adding user user999 to group qizhe
+Done.
+creating some test users...
+collected 7 items
+
+test/ntapfuse_test.py::TestClass::test_mkdir 
+creating basedir and mountpoint...
+Testing mkdir...
+creating some empty folders for current user...
+switching to another user and create some empty folders
+User1 expecting numbers of logs: 22  result is: 22
+User1 expecting user usage: 90112  result is: 90112
+User2 expecting numbers of logs: 20  result is: 20
+User2 expecting user usage: 81920  result is: 81920
+removing all test files and folders...
+PASSED
+test/ntapfuse_test.py::TestClass::test_rmdir 
+creating basedir and mountpoint...
+Testing rmdir...
+creating some folders and then delete some of them...
+switch to another user to do the same stuff...
+User1 expecting numbers of logs: 18  result is: 18
+User1 expecting user usage: 73728  result is: 73728
+User2 expecting numbers of logs: 20  result is: 20
+User2 expecting user usage: 81920  result is: 81920
+removing all test files and folders...
+PASSED
+test/ntapfuse_test.py::TestClass::test_write 
+creating basedir and mountpoint...
+Writing some files as original user
+Gathering usage and log results
+removing all test files and folders...
+User1 expecting numbers of logs: 3  result is: 3
+User1 expecting user usage: 12288  result is: 12288
+PASSED
+test/ntapfuse_test.py::TestClass::test_unlink 
+creating basedir and mountpoint...
+Creating some empty files
+Removing some empty files
+Gathering usage data
+removing all test files and folders...
+User1 expecting numbers of logs: 8  result is: 8
+User1 expecting user usage: 0  result is: 0
+PASSED
+test/ntapfuse_test.py::TestClass::test_link 
+creating basedir and mountpoint...
+User1 expecting user usage: 73728  result is: 73728
+User2 expecting user usage: 73728  result is: 73728
+removing all test files and folders...
+PASSED
+test/ntapfuse_test.py::TestClass::test_chown qizhe
+creating test folder and file...
+before chown
+total 8
+-rw-r--r-- 1 qizhe qizhe   10 Apr 18 20:40 testFile.txt
+drwxr-xr-x 2 qizhe qizhe 4096 Apr 18 20:40 testFolder
+total 8
+-rw-r--r-- 1 user888 qizhe   10 Apr 18 20:40 testFile.txt
+drwxr-xr-x 2 user888 qizhe 4096 Apr 18 20:40 testFolder
+
+creating basedir and mountpoint...
+switching to root user to execute chown....
+after chown: 
+User1 expecting user usage: 0  result is: 0
+User2 expecting user usage: 8192  result is: 8192
+removing all test files and folders...
+PASSED
+test/ntapfuse_test.py::TestClass::test_truncate 
+creating basedir and mountpoint...
+writing size is: 36000
+mounting and creating test files to truncate...
+switching to another user to create file and truncate....
+User1 expecting user usage: 4096  result is: 4096
+User2 expecting user usage: 12288  result is: 12288
+removing all test files and folders...
+deleting all test users...
+PASSED
+
+============================== 7 passed in 10.44s ==============================
