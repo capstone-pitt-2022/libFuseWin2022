@@ -186,11 +186,25 @@ ntapfuse_chown (const char *path, uid_t uid, gid_t gid)
     int res;
     int usage = 0;
     fullpath (path, fpath);
+
+    //check file existence
+    FILE *f = fopen(fpath);
+    if (f == null) { //file does not exist
+        log_file_op("Chown", fpath, 0, 0, "Failed", -errno);
+        res = -1;
+        return res < 0 ? -errno : 0;
+    }
+
     //get file size
     long fileSize = getFileSize (fpath);
 
     //old user id for quota updating
     int oldUid = getOwnerId (fpath);
+    if (!(oldUid >= 0)) { //uid is not valid
+        log_file_op("Chown", fpath, fileSize, 0, "Failed", -errno);
+        res = -1;
+        return res < 0 ? -errno : 0;
+    }
     
     //get blocks allocated by file
     int numBlocks = getNumBlocks(fileSize);
