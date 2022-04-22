@@ -35,28 +35,45 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/xattr.h>
 #include <unistd.h>
 
 #include "database.h"
 
-/*global variable to track?*/
-int newfile = 0;
+int getFileSize(char *path) {
+  FILE *file = fopen(path, "rb");
+  if (!file) {
+    // check if it's empty
+    fprintf(stderr, "Error opening file\n");
+    return -1;
+  } else {
+    // it's not -- get its size
+    fseek(file, 0, SEEK_END);
+    int file_size = ftell(file);
+    // fseek(file, 0, SEEK_SET);
+    fclose(file);
+    return file_size;
+  }
+}
+
+int getNumBlocks(int fileSize) {
+  // avoid c truncation towards zero
+  return ceil(((double)fileSize / (double)BLOCK_SIZE));
+}
 
 char *getTime() {
   char *timebuf = NULL;
   time_t now;
   timebuf = malloc(TIME_MAX);
-  if (!timebuf) {
-    return NULL;
-  }
+  if (!timebuf) return NULL;
   time(&now);
   strftime(timebuf, TIME_MAX, "%c", localtime(&now));
   return timebuf;
 }
 
-int getOwnerId(char *path) {
+int getFileOwnerUid(char *path) {
   struct stat stbuf;
   int ret = stat(path, &stbuf);
   if (ret < 0) {
@@ -83,6 +100,25 @@ int getNumOfFiles(char *dirPath) {
     return ret;
   }
   return size;
+}
+
+int getRootGid() {
+  char *basedir = (char *)fuse_get_context()->private_data;
+  struct stat stbuf;
+  int ret = stat(basedir, &stbuf);
+  if (ret < 0)
+    return ret;
+  else
+    return stbuf.st_gid;
+}
+
+char *addquote(char *str) {
+  char *newstr = calloc(1, strlen(str) + 2);
+  *newstr = '\'';
+  strcat(newstr, str);
+  char *t = "\'";
+  strcat(newstr, t);
+  return newstr;
 }
 
 /**
@@ -117,20 +153,30 @@ int ntapfuse_readlink(const char *path, char *target, size_t size) {
 int ntapfuse_mknod(const char *path, mode_t mode, dev_t dev) {
   char fpath[PATH_MAX];
   fullpath(path, fpath);
-  newfile = 1;
-
-  return mknod(fpath, mode, dev) ? -errno : 0;
+  struct fuse_context *context = fuse_get_context();
+  uid_t uid = getuid();
+  if (uid != context->uid) {
+    setuid(geteuid());
+    mode_t new_mode = S_IWUSR | S_IRUSR | S_IWGRP | S_IRGRP;
+    int res1 = mknod(fpath, new_mode, dev) ? -errno : 0;
+    int res2 = chown(fpath, context->uid, getRootGid()) ? -errno : 0;
+    setuid(uid);
+    return res1 && res2;
+  } else {
+    return mknod(fpath, mode, dev) ? -errno : 0;
+  }
 }
 
 int ntapfuse_mkdir(const char *path, mode_t mode) {
   char fpath[PATH_MAX];
   fullpath(path, fpath);
 
+  struct fuse_context *con = fuse_get_context();
   // get the updated usage with the additional directory
   int newUsage = BLOCK_SIZE + getUsage(getuid());
 
-  // check if it surpasses the quota -- if so do not perform the op and return
-  // failure
+  // check if it surpasses the quota -- if so do not perform the op and
+  // return failure
   if (newUsage > QUOTA) {
     log_file_op("Mkdir", fpath, BLOCK_SIZE, 0, "Failed", -ENOBUFS);
     return -ENOBUFS;
@@ -154,7 +200,7 @@ int ntapfuse_unlink(const char *path) {
   char fpath[PATH_MAX];
   fullpath(path, fpath);
 
-  int uid = getOwnerId(fpath);
+  int uid = getFileOwnerUid(fpath);
   // get the size of the src
   int file_size = getFileSize(fpath);
   // get that in blocks
@@ -179,7 +225,7 @@ int ntapfuse_rmdir(const char *path) {
   char fpath[PATH_MAX];
   fullpath(path, fpath);
 
-  int uid = getOwnerId(fpath);
+  int uid = getFileOwnerUid(fpath);
   // perform the op
   int ret = rmdir(fpath);
 
@@ -217,7 +263,7 @@ int ntapfuse_link(const char *src, const char *dst) {
   char fsrc[PATH_MAX];
   fullpath(src, fsrc);
 
-  int uid = getOwnerId(fsrc);
+  int uid = getFileOwnerUid(fsrc);
   // get the size of the src
   int file_size = getFileSize(fsrc);
   // get that in blocks
@@ -321,9 +367,9 @@ int ntapfuse_truncate(const char *path, off_t off) {
                      : initFileSize;
 
   /* compare the initail file size, the truncate size, and the block size to
-  determine the usage change when truncate size greater than initial file size,
-  nothing change, if truncate size less than initial file size, than check if
-  it's less than the block size then decide the usage */
+  determine the usage change when truncate size greater than initial file
+  size, nothing change, if truncate size less than initial file size, than
+  check if it's less than the block size then decide the usage */
   if (off >= initFileSize) {
     usage = 0;
   } else {
@@ -359,15 +405,6 @@ int ntapfuse_open(const char *path, struct fuse_file_info *fi) {
   return 0;
 }
 
-char *addquote(char *str) {
-  char *newstr = calloc(1, strlen(str) + 2);
-  *newstr = '\'';
-  strcat(newstr, str);
-  char *t = "\'";
-  strcat(newstr, t);
-  return newstr;
-}
-
 int ntapfuse_read(const char *path, char *buf, size_t size, off_t off,
                   struct fuse_file_info *fi) {
   char fpath[PATH_MAX];
@@ -390,9 +427,9 @@ int ntapfuse_write(const char *path, const char *buf, size_t size, off_t off,
   // get the file size
   int file_size = getFileSize(fpath);
 
-  int uid = getOwnerId(fpath);
-
-  // empty file, allocate empty block (and then some if circumstances dictate)
+  int uid = getFileOwnerUid(fpath);
+  // empty file, allocate empty block (and then some if circumstances
+  // dictate)
   if (file_size == 0) {
     // update usage for the initial block
     usage += BLOCK_SIZE;
@@ -549,29 +586,5 @@ int ntapfuse_access(const char *path, int mode) {
 
 void *ntapfuse_init(struct fuse_conn_info *conn) {
   return (fuse_get_context())->private_data;
-}
-
-// return the size of the file given by the path
-int getFileSize(char *path) {
-  // pointer to the file
-  FILE *f;
-  // open the file
-  f = fopen(path, "rb");
-  // check if it's empty
-  if (f == NULL) {
-    printf("Error opening file\n");
-    return -1;
-  }
-  // it's not -- get its size
-  fseek(f, 0, SEEK_END);
-  int file_size = ftell(f);
-  fseek(f, 0, SEEK_SET);
-  fclose(f);
-  return file_size;
-}
-
-// get the # of blocks the file is taking up
-int getNumBlocks(int fileSize) {
-  return ceil(((double)fileSize / (double)BLOCK_SIZE));
 }
 
