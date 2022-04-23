@@ -22,7 +22,7 @@
  */
 #define _XOPEN_SOURCE 500
 #define BLOCK_SIZE 4096
-#define QUOTA 1000000
+#define QUOTA 100000
 #define TIME_MAX 80
 #define NumOfFilesQuota 100
 
@@ -164,13 +164,16 @@ int ntapfuse_mknod(const char *path, mode_t mode, dev_t dev) {
     setuid(geteuid());
     mode_t new_mode = S_IWUSR | S_IRUSR | S_IWGRP | S_IRGRP;
     res1 = mknod(fpath, new_mode, dev) ? -errno : 0;
-    res2 = chown(fpath, context->uid, getRootGid()) ? -errno : 0; 
+    res2 = chown(fpath, context->uid, getRootGid()) ? -errno : 0;
+    // setuid(uid);
+    
   } else {
     mode_t new_mode = S_IWUSR | S_IRUSR | S_IWGRP | S_IRGRP;
     res1 = mknod(fpath, new_mode, dev) ? -errno : 0;
     res2 = chown(fpath, uid, getRootGid()) ? -errno : 0;
-  }
 
+    
+  }
   if (res1==0) {
       newfile = 1;
   }
@@ -185,10 +188,8 @@ int ntapfuse_mkdir(const char *path, mode_t mode) {
 
   struct fuse_context *context = fuse_get_context();
   uid_t uid = getuid();
-  //get the updated usage with the additional directory
   int newUsage = BLOCK_SIZE + getUsage(getuid());
   int res1,res2;
-
 
   //check if it surpasses the quota -- if so do not perform the op and
   // return failure
@@ -214,8 +215,7 @@ int ntapfuse_mkdir(const char *path, mode_t mode) {
     
   }
 
-  return res1 && res2;
-
+    return res1 && res2;
 }
 
 int ntapfuse_unlink(const char *path) {
@@ -506,6 +506,7 @@ int ntapfuse_write(const char *path, const char *buf, size_t size, off_t off,
       operation. Log the failure and return error
     */
     log_file_op("Write", fpath, size, context->uid, "Failed", -EDQUOT);
+    fprintf(stderr, "no enough space\n");
     return -EDQUOT;
   }
 
