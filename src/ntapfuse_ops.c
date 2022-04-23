@@ -24,6 +24,7 @@
 #define BLOCK_SIZE 4096
 #define QUOTA 1000000
 #define TIME_MAX 80
+#define NumOfFilesQuota 100
 
 #include "ntapfuse_ops.h"
 
@@ -41,6 +42,9 @@
 #include <unistd.h>
 
 #include "database.h"
+
+int newfile=0;
+
 
 int getFileSize(char *path) {
   FILE *file = fopen(path, "rb");
@@ -166,12 +170,13 @@ int ntapfuse_mknod(const char *path, mode_t mode, dev_t dev) {
     res1 = mknod(fpath, new_mode, dev) ? -errno : 0;
     res2 = chown(fpath, uid, getRootGid()) ? -errno : 0;
   }
-  
+
   if (res1==0) {
       newfile = 1;
   }
 
   return res1 && res2;
+
 }
 
 int ntapfuse_mkdir(const char *path, mode_t mode) {
@@ -217,6 +222,8 @@ int ntapfuse_unlink(const char *path) {
   char fpath[PATH_MAX];
   fullpath(path, fpath);
 
+  struct fuse_context *context = fuse_get_context();
+
   int uid = getFileOwnerUid(fpath);
   // get the size of the src
   int file_size = getFileSize(fpath);
@@ -226,11 +233,11 @@ int ntapfuse_unlink(const char *path) {
   int ret = unlink(fpath);
   // unlink has failed -- log the op do not decrement usage
   if (ret < 0) {
-    log_file_op("Unlink", fpath, numBlocks * BLOCK_SIZE, 0, "Failed", ret);
+    log_file_op("Unlink", fpath, -numBlocks * BLOCK_SIZE, context->uid, "Failed", ret);
   }
   // unlink has succeeded -- log the op and decrement usage
   else {
-    log_file_op("Unlink", fpath, numBlocks * BLOCK_SIZE, numBlocks * BLOCK_SIZE,
+    log_file_op("Unlink", fpath, -numBlocks * BLOCK_SIZE, context->uid,
                 "Success", 0);
     updateQuotas(getTime(), uid, -numBlocks * BLOCK_SIZE, -1);
   }
@@ -242,6 +249,8 @@ int ntapfuse_rmdir(const char *path) {
   char fpath[PATH_MAX];
   fullpath(path, fpath);
 
+  struct fuse_context *context = fuse_get_context();
+
   int uid = getFileOwnerUid(fpath);
   // perform the op
   int ret = rmdir(fpath);
@@ -252,7 +261,7 @@ int ntapfuse_rmdir(const char *path) {
   }
   // rmdir has succeeded -- log the op and decrement usage
   else {
-    log_file_op("Rmdir", fpath, -BLOCK_SIZE, -BLOCK_SIZE, "Success", 0);
+    log_file_op("Rmdir", fpath, -BLOCK_SIZE, context->uid, "Success", 0);
     updateQuotas(getTime(), uid, -BLOCK_SIZE, 0);
   }
 
@@ -279,6 +288,7 @@ int ntapfuse_rename(const char *src, const char *dst) {
 int ntapfuse_link(const char *src, const char *dst) {
   char fsrc[PATH_MAX];
   fullpath(src, fsrc);
+  struct fuse_context *context = fuse_get_context();
 
   int uid = getFileOwnerUid(fsrc);
   // get the size of the src
@@ -289,8 +299,8 @@ int ntapfuse_link(const char *src, const char *dst) {
   int newUsage = getUsage(getuid()) + (numBlocks * BLOCK_SIZE);
   // see if this surpasses the quota
   if (newUsage > QUOTA) {
-    log_file_op("Link", fsrc, numBlocks * BLOCK_SIZE, 0, "Failed", -ENOBUFS);
-    return -ENOBUFS;
+    log_file_op("Link", fsrc, numBlocks * BLOCK_SIZE, 0, "Failed", -EDQUOT);
+    return -EDQUOT;
   }
   char fdst[PATH_MAX];
   fullpath(dst, fdst);
@@ -298,11 +308,11 @@ int ntapfuse_link(const char *src, const char *dst) {
   int ret = link(fsrc, fdst);
   // link has failed -- log the op do not increment usage
   if (ret < 0) {
-    log_file_op("Link", fsrc, numBlocks * BLOCK_SIZE, 0, "Failed", ret);
+    log_file_op("Link", fsrc, numBlocks * BLOCK_SIZE, context->uid, "Failed", ret);
   }
   // link has succeeded -- log the op and increment usage
   else {
-    log_file_op("Link", fsrc, numBlocks * BLOCK_SIZE, numBlocks * BLOCK_SIZE,
+    log_file_op("Link", fsrc, numBlocks * BLOCK_SIZE, context->uid,
                 "Success", 0);
     updateQuotas(getTime(), uid, numBlocks * BLOCK_SIZE, 1);
   }
@@ -336,7 +346,7 @@ int ntapfuse_chown(const char *path, uid_t uid, gid_t gid) {
     if (S_ISREG(info.st_mode)) {
       numFile = 1;
     } else if (S_ISDIR(info.st_mode)) {
-      numFile = getNumOfFiles(fpath);
+      numFile = 0;
     }
     ori_uid = info.st_uid;
     ori_gid = info.st_gid;
@@ -353,9 +363,9 @@ int ntapfuse_chown(const char *path, uid_t uid, gid_t gid) {
   }
 
   if (res < 0) {
-    log_file_op("Chown", fpath, size, size, "Failed", -errno);
+    log_file_op("Chown", fpath, size, 0, "Failed", -errno);
   } else {
-    log_file_op("Chown", fpath, size, size, "Success", 0);
+    log_file_op("Chown", fpath, size, 0, "Success", 0);
     updateQuotas(time, ori_uid, size * -1, -numFile);
     updateQuotas(time, uid, size, numFile);
   }
@@ -368,6 +378,7 @@ int ntapfuse_truncate(const char *path, off_t off) {
   fullpath(path, fpath);
   int initFileSize = 0;
   int usage = 0;
+  struct fuse_context *context = fuse_get_context();
   FILE *f;
   int res;
   // get the initail file size
@@ -395,10 +406,10 @@ int ntapfuse_truncate(const char *path, off_t off) {
   }
   res = truncate(fpath, off);
   if (res < 0) {
-    log_file_op("Truncate", fpath, 0, 0, "Failed", -errno);
+    log_file_op("Truncate", fpath, 0, context->uid, "Failed", -errno);
   } else {
-    updateQuotas(getTime(), getuid(), usage, 0);
-    log_file_op("Truncate", fpath, usage, usage, "Success", 0);
+    updateQuotas(getTime(), getFileOwnerUid(fpath), usage, 0);
+    log_file_op("Truncate", fpath, usage,context->uid, "Success", 0);
   }
   return res < 0 ? -errno : 0;
 }
@@ -438,11 +449,13 @@ int ntapfuse_write(const char *path, const char *buf, size_t size, off_t off,
 
   char fpath[PATH_MAX];
   int res;
+  struct fuse_context *context = fuse_get_context();
   // user usage
   int usage = 0;
   fullpath(path, fpath);
   // get the file size
   int file_size = getFileSize(fpath);
+ 
 
   int uid = getFileOwnerUid(fpath);
   // empty file, allocate empty block (and then some if circumstances
@@ -482,7 +495,7 @@ int ntapfuse_write(const char *path, const char *buf, size_t size, off_t off,
   int newUsage = usage + getUsage(getuid());
   /*
     If the newUsage exceeds the quota, error returned will
-    be ENOBUFS which = Insufficient resources were available in the system to
+    be EDQUOT which = Insufficient resources were available in the system to
     perform the operation. (I assume this is the correct one) - source:
     https://man7.org/linux/man-pages/man3/errno.3.html
   */
@@ -492,8 +505,8 @@ int ntapfuse_write(const char *path, const char *buf, size_t size, off_t off,
       Write fails because quota is maxed out, do not perform the write
       operation. Log the failure and return error
     */
-    log_file_op("Write", fpath, size, 0, "Failed", -ENOBUFS);
-    return -ENOBUFS;
+    log_file_op("Write", fpath, size, context->uid, "Failed", -EDQUOT);
+    return -EDQUOT;
   }
 
   // perform the write
@@ -501,14 +514,14 @@ int ntapfuse_write(const char *path, const char *buf, size_t size, off_t off,
 
   // write has failed -- log the op do not increment usage
   if (res < 0) {
-    log_file_op("Write", fpath, size, 0, "Failed", -errno);
+    log_file_op("Write", fpath, size, context->uid, "Failed", -errno);
   }
   // write has succeeded -- log the op and increment usage
   else {
-    log_file_op("Write", fpath, size, usage, "Success", 0);
-    updateQuotas(getTime(), uid, usage, 0);
+    log_file_op("Write", fpath, size, context->uid, "Success", 0);
+    updateQuotas(getTime(), context->uid, usage, newfile);
+    newfile = 0;
   }
-  printf("RES %d\n", res);
 
   return res < 0 ? -errno : size;
 }
