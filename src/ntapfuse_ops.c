@@ -178,29 +178,39 @@ int ntapfuse_mkdir(const char *path, mode_t mode) {
   char fpath[PATH_MAX];
   fullpath(path, fpath);
 
-  struct fuse_context *con = fuse_get_context();
-  // get the updated usage with the additional directory
+  struct fuse_context *context = fuse_get_context();
+  uid_t uid = getuid();
+  //get the updated usage with the additional directory
   int newUsage = BLOCK_SIZE + getUsage(getuid());
+  int res1,res2;
 
-  // check if it surpasses the quota -- if so do not perform the op and
+
+  //check if it surpasses the quota -- if so do not perform the op and
   // return failure
   if (newUsage > QUOTA) {
-    log_file_op("Mkdir", fpath, BLOCK_SIZE, 0, "Failed", -ENOBUFS);
-    return -ENOBUFS;
-  }
-  // perform the op
-  int ret = mkdir(fpath, mode | S_IFDIR);
-  // mkdir has failed -- log the op do not increment usage
-  if (ret < 0) {
-    log_file_op("Mkdir", fpath, BLOCK_SIZE, 0, "Failed", ret);
-  }
-  // mkdir has succeeded -- log the op and increment usage
-  else {
-    log_file_op("Mkdir", fpath, BLOCK_SIZE, BLOCK_SIZE, "Success", 0);
-    updateQuotas(getTime(), getuid(), BLOCK_SIZE, 0);
+    log_file_op("Mkdir", fpath, BLOCK_SIZE, 0, "Failed", -EDQUOT);
+    return -EDQUOT;
   }
 
-  return ret ? -errno : 0;
+  if (uid != context->uid) {
+    setuid(geteuid());
+    mode_t new_mode = S_IWUSR | S_IRUSR | S_IWGRP | S_IRGRP;
+    res1 = mkdir(fpath, new_mode) ? -errno : 0;
+    res2 = chown(fpath, context->uid, getRootGid()) ? -errno : 0;
+    log_file_op("Mkdir", fpath, BLOCK_SIZE, context->uid, "Success", 0);
+    updateQuotas(getTime(), context->uid, BLOCK_SIZE, 0);
+
+  } else {
+    mode_t new_mode = S_IWUSR | S_IRUSR | S_IWGRP | S_IRGRP;
+    res1 = mkdir(fpath, new_mode);
+    res2 = chown(fpath, uid, getRootGid());
+    log_file_op("Mkdir", fpath, BLOCK_SIZE, uid, "Success", 0);
+    updateQuotas(getTime(), uid, BLOCK_SIZE, 0);
+    
+  }
+
+  return res1 && res2;
+
 }
 
 int ntapfuse_unlink(const char *path) {
