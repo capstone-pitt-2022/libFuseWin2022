@@ -84,7 +84,7 @@ void close_db() {
         sqlite3_close(DB);
 }
 
-int log_file_op(char *operation, char *path, size_t size, size_t usage, char* rstatus, int errorCode) {
+int log_file_op(char *operation, char *path, size_t size, int uid, char* rstatus, int errorCode) {
     /* SQL commands to compile */
     const char *sql = "CREATE TABLE if not exists Logs(\
                            Time TEXT,\ 
@@ -99,7 +99,6 @@ int log_file_op(char *operation, char *path, size_t size, size_t usage, char* rs
     char *err = NULL;
     char *sqlbuf = NULL;
     char *timebuf = NULL;
-    int uid;
     int updateSize;
     time_t now;
     int rc,rc1;
@@ -107,17 +106,15 @@ int log_file_op(char *operation, char *path, size_t size, size_t usage, char* rs
     /* allocate heap data and check for succcess */
     sqlbuf = malloc(BUF_MAX);
     if (!sqlbuf) {
-            fprintf(stderr,"ERROR: couldn't allocate SQL buffer\n");
-            return -ENOMEM;
+        fprintf(stderr,"ERROR: couldn't allocate SQL buffer\n");
+        return -ENOMEM;
     }
 
     timebuf = malloc(TIME_MAX);
     if (!timebuf) {
-            fprintf(stderr,"ERROR: couldn't allocate Time buffer\n");
-            return -ENOMEM;
+        fprintf(stderr,"ERROR: couldn't allocate Time buffer\n");
+        return -ENOMEM;
     }
-    /* get user id */
-    uid = getuid();  
 
     /* get current time and convert it to readable */
     time(&now);
@@ -231,21 +228,3 @@ int getUsage(int uid)
     //return the usage 
     return usage;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
