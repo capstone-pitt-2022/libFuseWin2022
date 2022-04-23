@@ -155,16 +155,23 @@ int ntapfuse_mknod(const char *path, mode_t mode, dev_t dev) {
   fullpath(path, fpath);
   struct fuse_context *context = fuse_get_context();
   uid_t uid = getuid();
+  int res1,res2;
   if (uid != context->uid) {
     setuid(geteuid());
     mode_t new_mode = S_IWUSR | S_IRUSR | S_IWGRP | S_IRGRP;
-    int res1 = mknod(fpath, new_mode, dev) ? -errno : 0;
-    int res2 = chown(fpath, context->uid, getRootGid()) ? -errno : 0;
-    setuid(uid);
-    return res1 && res2;
+    res1 = mknod(fpath, new_mode, dev) ? -errno : 0;
+    res2 = chown(fpath, context->uid, getRootGid()) ? -errno : 0; 
   } else {
-    return mknod(fpath, mode, dev) ? -errno : 0;
+    mode_t new_mode = S_IWUSR | S_IRUSR | S_IWGRP | S_IRGRP;
+    res1 = mknod(fpath, new_mode, dev) ? -errno : 0;
+    res2 = chown(fpath, uid, getRootGid()) ? -errno : 0;
   }
+  
+  if (res1==0) {
+      newfile = 1;
+  }
+
+  return res1 && res2;
 }
 
 int ntapfuse_mkdir(const char *path, mode_t mode) {
