@@ -215,7 +215,7 @@ int ntapfuse_mkdir(const char *path, mode_t mode) {
     
   }
 
-    
+    return res1 && res2;
 }
 
 int ntapfuse_unlink(const char *path) {
