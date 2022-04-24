@@ -22,7 +22,7 @@
  */
 #define _XOPEN_SOURCE 500
 #define BLOCK_SIZE 4096
-#define QUOTA 100000
+#define QUOTA 1000000
 #define TIME_MAX 80
 #define NumOfFilesQuota 100
 
@@ -187,8 +187,8 @@ int ntapfuse_mkdir(const char *path, mode_t mode) {
   fullpath(path, fpath);
 
   struct fuse_context *context = fuse_get_context();
-  uid_t uid = getuid();
-  int newUsage = BLOCK_SIZE + getUsage(getuid());
+  uid_t uid = context->uid;
+  int newUsage = BLOCK_SIZE + getUsage(uid);
   int res1,res2;
 
   //check if it surpasses the quota -- if so do not perform the op and
@@ -215,7 +215,7 @@ int ntapfuse_mkdir(const char *path, mode_t mode) {
     
   }
 
-    return res1 && res2;
+    
 }
 
 int ntapfuse_unlink(const char *path) {
@@ -492,7 +492,7 @@ int ntapfuse_write(const char *path, const char *buf, size_t size, off_t off,
   }
 
   // get the updated usage
-  int newUsage = usage + getUsage(getuid());
+  int newUsage = usage + getUsage(uid);
   /*
     If the newUsage exceeds the quota, error returned will
     be EDQUOT which = Insufficient resources were available in the system to
