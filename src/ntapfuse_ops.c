@@ -296,7 +296,7 @@ int ntapfuse_link(const char *src, const char *dst) {
   // get that in blocks
   int numBlocks = getNumBlocks(file_size);
   // get the new usage
-  int newUsage = getUsage(getuid()) + (numBlocks * BLOCK_SIZE);
+  int newUsage = getUsage(context->uid) + (numBlocks * BLOCK_SIZE);
   // see if this surpasses the quota
   if (newUsage > QUOTA) {
     log_file_op("Link", fsrc, numBlocks * BLOCK_SIZE, 0, "Failed", -EDQUOT);
