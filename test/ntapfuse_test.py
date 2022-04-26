@@ -22,6 +22,7 @@ import getpass
 import subprocess 
 import sqlite3
 import math
+import random
 
 # cxstant values
 QUOTA = 10000000
@@ -484,4 +485,113 @@ class TestClass:
 
     def test_quota(self):
         return
+
+
+
+    def test_integrate(self):
+        start_test()
+
+        user = oriUser
+        uid = get_uid_from_username(user)
+        numLogsW = check_log_count(uid, 'Write')
+        numLogsM = check_log_count(uid, 'Mkdir')
+        numLogsR = check_log_count(uid, 'Rmdir')
+        numLogsU = check_log_count(uid, 'Unlink')
+        numLogsL = check_log_count(uid, 'Link')
+        numLogsT = check_log_count(uid, 'Truncate')
+        ops = [numLogsW,numLogsM,numLogsR,numLogsU,numLogsL,numLogsT]
+        for op in ops:
+            if op is None:
+                op = 0
+
+        usage = check_quota_usage(uid)
+        if usage is None:
+            usage = 0
+
+        textSize = random.randint(1,50000)
+
+        os.chdir(mountPath)
+        # create some random size file
+        for i in range(100):
+            os.system(f"head -c {textSize} /dev/urandom > file{i}.txt ")
+            if check_last_log_status() == GOOD:
+                numLogsW += 1
+                usage += math.ceil(textSize/BLOCK_SIZE)*BLOCK_SIZE
+            else:
+                numLogsW += 1
+
+        # remove some files
+        for i in range(50):
+            os.system(f"rm file{i}.txt")
+            if check_last_log_status() == GOOD:
+                numLogsU += 1
+                usage -= math.ceil(textSize/BLOCK_SIZE)*BLOCK_SIZE
+            else:
+                numLogsU += 1
+
+        # link some files
+        for i in range(50,100):
+            os.system(f"ln file{i}.txt file{i}link.txt")
+            if check_last_log_status() == GOOD:
+                numLogsL += 1
+                fsize = math.ceil(textSize / BLOCK_SIZE) * BLOCK_SIZE
+                usage += fsize if textSize > BLOCK_SIZE else BLOCK_SIZE  
+            else:
+                numLogsL += 1
+
+        # truncate some file with randome size
+        oriFileSize = textSize
+        for i in range(50,100):
+            truncateSize = random.randint(1000,100000)
+            os.system(f"truncate -s {truncateSize} file{i}.txt")
+
+            change = 0
+            if truncateSize >= oriFileSize:
+                change = 0
+            else:
+                change = math.ceil(truncateSize/BLOCK_SIZE)*BLOCK_SIZE - math.ceil(oriFileSize/BLOCK_SIZE)*BLOCK_SIZE
+         
+
+            if check_last_log_status() == GOOD:
+                numLogsT += 1
+                usage += change
+                # usage =math.ceil(usage/BLOCK_SIZE)*BLOCK_SIZE        
+            else:
+                numLogsT += 1
+
+        # create some dirs
+        for i in range(100):
+            os.system(f"mkdir folder{i}")
+            if check_last_log_status() == GOOD:
+                numLogsM += 1
+                usage += BLOCK_SIZE
+            else:
+                numLogsM += 1
+
+        # remove some dirs
+        for i in range(50):
+            os.system(f"rmdir folder{i}")
+            if check_last_log_status() == GOOD:
+                numLogsR += 1
+                usage-=BLOCK_SIZE 
+            else:
+                numLogsR += 1
+        
+
+        numLogsMres = check_log_count(uid, 'Mkdir')
+        numLogsRres = check_log_count(uid, 'Rmdir')
+        numLogsUres = check_log_count(uid, 'Unlink')
+        numLogsLres = check_log_count(uid, 'Link')
+        numLogsTres = check_log_count(uid, 'Truncate')
+
+        usageRes = check_quota_usage(uid)
+
+        end_test()
+
+        assert numLogsM == numLogsMres
+        assert numLogsR == numLogsRres
+        assert numLogsU == numLogsUres
+        assert numLogsL == numLogsLres
+        assert numLogsT == numLogsTres
+        assert usage == usageRes
 
