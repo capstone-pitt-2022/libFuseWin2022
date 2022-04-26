@@ -452,23 +452,19 @@ class TestClass:
         os.chdir(workPath)
 
         change1 = 0
-        if truncateSize1 > oriFileSize:
+        if truncateSize1 >= oriFileSize:
             change1 = 0
-        elif truncateSize1 > BLOCK_SIZE:
-            change1 = truncateSize1 - oriFileSize
         else:
-            change1 = BLOCK_SIZE - oriFileSize
+            change1 = math.ceil(truncateSize1/BLOCK_SIZE)*BLOCK_SIZE - math.ceil(oriFileSize/BLOCK_SIZE)*BLOCK_SIZE
 
         change2 = 0
         if truncateSize2 > oriFileSize:
             change2 = 0
-        elif truncateSize2 > BLOCK_SIZE:
-            change2 = truncateSize2 - oriFileSize
         else:
-            change2 = BLOCK_SIZE - oriFileSize
+            change2 = math.ceil(truncateSize2/BLOCK_SIZE)*BLOCK_SIZE - math.ceil(oriFileSize/BLOCK_SIZE)*BLOCK_SIZE
 
-        usage += oriFileSize + change1
-        usage += oriFileSize + change2
+        usage += math.ceil(oriFileSize/BLOCK_SIZE)*BLOCK_SIZE +change1
+        usage += math.ceil(oriFileSize/BLOCK_SIZE)*BLOCK_SIZE +change2
 
         numLogsRes = check_log_count(uid, 'Truncate')
         if numLogsRes is None:
