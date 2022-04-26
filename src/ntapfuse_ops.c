@@ -22,7 +22,7 @@
  */
 #define _XOPEN_SOURCE 500
 #define BLOCK_SIZE 4096
-#define QUOTA 1000000
+#define QUOTA 10000000
 #define TIME_MAX 80
 #define NumOfFilesQuota 100
 

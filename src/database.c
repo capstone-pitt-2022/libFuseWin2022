@@ -23,7 +23,7 @@
 
 #define TIME_MAX 80
 #define BUF_MAX 600
-#define QUOTA 1000000
+#define QUOTA 10000000
 
 /* global pointer to database connection object */
 sqlite3 *DB;

@@ -24,7 +24,7 @@ import sqlite3
 import math
 
 # cxstant values
-QUOTA = 1000000
+QUOTA = 10000000
 MOUNT_DIR = 'mount_dir'
 BASE_DIR = 'base_dir'
 DATABASE_NAME = 'log.db'
