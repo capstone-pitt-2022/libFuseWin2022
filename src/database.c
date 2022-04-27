@@ -205,6 +205,8 @@ TODO:  IMPLEMENT ERROR HANDLING!!!
 */
 int getUsage(int uid)
 {
+    int rc;
+    char *err = NULL;
     //holds the SQL command w/ placeholders 
     char *sql = NULL;
     //holds the SQL command w/ placeholders filled in 
@@ -216,13 +218,31 @@ int getUsage(int uid)
     //stmt to be executed 
     sqlite3_stmt * stmt;
     //prepare the statement with the proper parameters 
-    sqlite3_prepare_v2(DB, sqlbuf, -1, &stmt, NULL);
+    rc = sqlite3_prepare_v2(DB, sqlbuf, -1, &stmt, NULL);
+
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "SQL prepare error: %s\n", err);
+        sqlite3_free(err);
+        return -1;
+    }
     //execute statement 
-    sqlite3_step(stmt);
+    rc = sqlite3_step(stmt);
+
+    if (rc != SQLITE_ROW) {
+        fprintf(stderr, "SQL step error: %s\n", err);
+        sqlite3_free(err);
+        return -1;
+    }
     //retrieve the usage from the table 
     int usage = sqlite3_column_int(stmt,0);
     //delete the statement 
-    sqlite3_finalize(stmt);
+    rc = sqlite3_finalize(stmt);
+
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "SQL finalize error: %s\n", err);
+        sqlite3_free(err);
+        return -1;
+    }
     //free the buffer 
     free(sqlbuf);
     //return the usage 
