@@ -35,17 +35,17 @@ testChown="../test/test_chown.py"
 testOutput="../test/test_results.txt"
 testDirectory="../test"
 
-printf "Creating FUSE group...\n"
-sudo groupadd -f FUSE
+#printf "Creating ${mainUser} group...\n"
+#sudo groupadd -f ${mainUser}
 printf "adding the original user to group...\n"
 sudo usermod -aG sudo ${mainUser}
-sudo usermod -aG FUSE ${mainUser}
+sudo usermod -aG ${mainUser} ${mainUser}
 
 for u in ${!users[@]}; do 
   printf "Creating test user: %s...\n" ${users[$u]}
   sudo useradd -M ${users[$u]}
-  printf "Adding user %s to FUSE group...\n" ${users[$u]}
-  sudo usermod -aG FUSE ${users[$u]}
+  printf "Adding user %s to ${mainUser} group...\n" ${users[$u]}
+  sudo usermod -aG ${mainUser} ${users[$u]}
 done
 
 
@@ -67,14 +67,14 @@ mkdir -p ntapfuse/base_dir
 mkdir -p ntapfuse/mount_dir
 printf "Modifying ownership and permissions of mount and base dirs...\n"
 sudo chmod -R g+rwx ./ntapfuse
-sudo chgrp -R FUSE ./ntapfuse
+sudo chgrp -R ${mainUser} ./ntapfuse
 printf "Change directory to test directory..."
 cd ntapfuse
 
 printf "Starting ntapfuse...\n"
 ntapfuse mount base_dir mount_dir -o allow_other
 sudo chmod g+rwx log.db
-sudo chgrp -R FUSE log.db
+sudo chgrp -R ${mainUser} log.db
 
 # run the test suites for main user 
 printf "Running the test suite for %s...\n" ${mainUser}
@@ -98,8 +98,8 @@ for u in ${!users[@]}; do
   sudo userdel -f ${users[$u]}
 done
 
-printf "Deleting the FUSE group...\n"
-sudo groupdel -f FUSE
+#printf "Deleting the ${mainUser} group...\n"
+#sudo groupdel -f ${mainUser}
 printf "Removing all lingering files from the test directories..\n"
 rm -rf ./base_dir/*
 rm -rf ./mount_dir/*
