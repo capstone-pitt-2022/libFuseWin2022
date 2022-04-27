@@ -200,9 +200,7 @@ int getDirSize(char* dirPath) {
 }
 
 //returns the current user's usage 
-/*
-TODO:  IMPLEMENT ERROR HANDLING!!!
-*/
+
 int getUsage(int uid)
 {
     int rc;
