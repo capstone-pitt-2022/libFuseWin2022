@@ -483,9 +483,6 @@ class TestClass:
         assert usage == usageRes
         assert usage + remaining == QUOTA
 
-    def test_quota(self):
-        return
-
 
 
     def test_integrate(self):
